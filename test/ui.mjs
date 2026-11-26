@@ -57,7 +57,10 @@ const fakeCtx = {
       dshGo: {
         strip: (id, def) => regs.strips.push({ id, def }),
         on: (id, fn2) => regs.handlers.set(id, fn2),
-        panel: (id, def) => regs.panels.set(id, def),
+        panel: (id, def) => {
+          regs.panels.set(id, def)
+          if (id === 'creds') def.data({}, (v) => (globalThis.__creds = v), { locale: 'zh-CN' })
+        },
       },
       configEditor: fakeEditor,
     }),
@@ -106,7 +109,12 @@ try {
   assert.match(sr.toast, /已保存/)
   sr = await save({ nonsense: 'x' })
   assert.match(sr.toast, /没读到 AK\/SK/)
-  await wait(2200)
+  await wait(2500)
+  // 保存后凭证页本身也要更新（这次修的 bug）
+  const credsNow = globalThis.__creds
+  assert.equal(credsNow?.source, '已配置', JSON.stringify(credsNow))
+  assert.match(String(credsNow?.ak), /^TEST…AK00$/)
+  assert.equal(credsNow?.statusText, '就绪')
 
   // 状态条：已连上且今日可签到
   emitStrip()
