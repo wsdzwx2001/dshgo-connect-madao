@@ -57,11 +57,9 @@
       "versions": [
         {
           "version": "0.1.0",
-          "publishTimestamp": 1795715900,
+          "publishTimestamp": 1795716995,
           "source": {
-            "type": "git",
-            "url": "https://github.com/wsdzwx2001/dshgo-connect-madao",
-            "commit": "730054f437103f4597d18a94413bd36e372fc2d3"
+            "type": "npm"
           },
           "engines": {
             "dsh": ">=0.2.1-rc.2 <0.3.0-0"

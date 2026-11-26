@@ -5,6 +5,9 @@
 ## 安装
 
 ```sh
+# 从 npm 安装
+dsh plugin --profile web add dshgo-connect-madao
+
 # 从 GitHub 安装（固定版本）
 dsh plugin --profile web add "git+https://github.com/wsdzwx2001/dshgo-connect-madao.git#730054f437103f4597d18a94413bd36e372fc2d3"
 
