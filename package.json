@@ -79,5 +79,13 @@
         }
       ]
     }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wsdzwx2001/dshgo-connect-madao.git"
+  },
+  "homepage": "https://github.com/wsdzwx2001/dshgo-connect-madao#readme",
+  "bugs": {
+    "url": "https://github.com/wsdzwx2001/dshgo-connect-madao/issues"
   }
 }

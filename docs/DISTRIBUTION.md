@@ -26,16 +26,16 @@ git init -b main
 git add .
 git commit -m "feat: dshgo-connect-madao 0.1.0"
 git tag v0.1.0
-git remote add origin https://github.com/<owner>/dshgo-connect-madao.git
+git remote add origin https://github.com/wsdzwx2001/dshgo-connect-madao.git
 git push -u origin main --tags
 ```
 
 然后把 GitHub Release 附上 `dshgo-connect-madao-0.1.0.tgz`，并在 `package.json` 补上：
 
 ```json
-"repository": { "type": "git", "url": "git+https://github.com/<owner>/dshgo-connect-madao.git" },
-"homepage": "https://github.com/<owner>/dshgo-connect-madao#readme",
-"bugs": { "url": "https://github.com/<owner>/dshgo-connect-madao/issues" }
+"repository": { "type": "git", "url": "git+https://github.com/wsdzwx2001/dshgo-connect-madao.git" },
+"homepage": "https://github.com/wsdzwx2001/dshgo-connect-madao#readme",
+"bugs": { "url": "https://github.com/wsdzwx2001/dshgo-connect-madao/issues" }
 ```
 
 ## 3. 发布到 npm

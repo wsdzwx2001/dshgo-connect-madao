@@ -23,12 +23,12 @@ DSH 不内置索引源，需要自己托管一份索引（`docs/market/index.jso
 
 1. 开 GitHub Pages：Settings → Pages → Deploy from branch（`main` / `/docs`），
    或把 `docs/market/index.json` 扔到任意 https 静态地址。
-2. 索引地址形如 `https://<owner>.github.io/dshgo-connect-madao/market/index.json`。
+2. 索引地址形如 `https://wsdzwx2001.github.io/dshgo-connect-madao/market/index.json`。
 3. 在 DSH 里打开「自定义插件索引」→「发现」→「添加索引源」，填入该地址。
 4. 每次发版同时更新索引里的 `version` 和 `publishTimestamp`。
 
 > `docs/market/index.json` 里的 `source` 用 `{ "type": "npm" }`；如果暂时不发 npm，
-> 可改成 `{ "type": "git", "url": "https://github.com/<owner>/dshgo-connect-madao", "commit": "<40 位 SHA>" }`。
+> 可改成 `{ "type": "git", "url": "https://github.com/wsdzwx2001/dshgo-connect-madao", "commit": "<40 位 SHA>" }`。
 
 ## 3. awesome-dsh-plugin（PR / Issue）
 
@@ -41,7 +41,7 @@ DSH 不内置索引源，需要自己托管一份索引（`docs/market/index.jso
 ```text
 dshgo-connect-madao — 把华为云码道（CodeArts Agent）接入 dsh-go：本机 OpenAI 兼容桥、
 原生状态条与面板、额度自动刷新、每日签到、逐模型开关。
-https://github.com/<owner>/dshgo-connect-madao
+https://github.com/wsdzwx2001/dshgo-connect-madao
 ```
 
 ## 4. dsh-go Registry / Marketplace（coeasy/dsh-go）
