@@ -1,0 +1,67 @@
+{
+  "format": 1,
+  "title": {
+    "zh": "dsh-go 插件市场（自建索引）",
+    "en": "dsh-go plugin market (self-hosted index)"
+  },
+  "description": {
+    "zh": "dshgo-connect-madao 的单插件索引示例；把它并入社区索引时只需取 plugins 里的那一项。",
+    "en": "A single-plugin index example for dshgo-connect-madao; merge the plugins entry into the community index."
+  },
+  "metadata": {
+    "categories": {
+      "models": {
+        "title": {
+          "zh": "模型接入",
+          "en": "Models"
+        }
+      }
+    },
+    "labels": {
+      "huawei": {
+        "title": {
+          "zh": "华为云",
+          "en": "Huawei Cloud"
+        }
+      }
+    }
+  },
+  "plugins": [
+    {
+      "name": "dshgo-connect-madao",
+      "title": {
+        "zh": "码道连接",
+        "en": "connect-madao"
+      },
+      "description": {
+        "zh": "把华为云码道（CodeArts Agent）接入 dsh-go：本机 OpenAI 兼容桥、原生状态条与面板、额度自动刷新、每日签到、逐模型开关。",
+        "en": "Use Huawei Cloud CodeArts Agent models in dsh-go: a local OpenAI-compatible bridge with native status strip and panels, live quota, daily check-in and per-model switches."
+      },
+      "author": "dshgo-connect-madao contributors",
+      "metadata": {
+        "category": "models",
+        "keywords": [
+          "madao",
+          "codearts",
+          "huawei",
+          "openai-compatible"
+        ],
+        "labels": [
+          "huawei"
+        ]
+      },
+      "versions": [
+        {
+          "version": "0.1.0",
+          "publishTimestamp": 1795714610,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {
+            "dsh": ">=0.2.1-rc.2 <0.3.0-0"
+          }
+        }
+      ]
+    }
+  ]
+}

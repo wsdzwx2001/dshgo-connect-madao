@@ -1,0 +1,83 @@
+{
+  "name": "dshgo-connect-madao",
+  "version": "0.1.0",
+  "description": "华为云码道（CodeArts Agent）接入 dsh-go：本机 OpenAI 兼容桥 + 原生状态条与面板",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "docs"
+  ],
+  "keywords": [
+    "dsh-go",
+    "deepseek-harness",
+    "dsh-plugin",
+    "dsh-go-plugin",
+    "madao",
+    "codearts",
+    "huawei",
+    "openai-compatible"
+  ],
+  "license": "MIT",
+  "author": "dshgo-connect-madao contributors",
+  "engines": {
+    "node": ">=22",
+    "dsh": ">=0.2.1-rc.2 <0.3.0-0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "dshGo": {
+    "v": 1,
+    "title": {
+      "zh": "dshgo-connect-madao",
+      "en": "dshgo-connect-madao"
+    },
+    "icon": "globe",
+    "contributes": {
+      "composer.strip": [
+        {
+          "id": "state",
+          "icon": "globe",
+          "panel": "madao"
+        }
+      ],
+      "panels": [
+        {
+          "id": "madao",
+          "title": {
+            "zh": "connect-madao",
+            "en": "connect-madao"
+          },
+          "icon": "globe",
+          "placement": [
+            "session.tab",
+            "features"
+          ]
+        },
+        {
+          "id": "creds",
+          "title": {
+            "zh": "connect-madao 凭证",
+            "en": "connect keys"
+          },
+          "icon": "edit",
+          "placement": [
+            "session.tab",
+            "features"
+          ]
+        }
+      ]
+    }
+  }
+}
