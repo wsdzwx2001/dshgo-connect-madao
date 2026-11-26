@@ -1,0 +1,64 @@
+# 社区上架清单（提交用）
+
+仓库：`dshgo-connect-madao`（本地已 init、已打 `v0.1.0`，等待远端）
+包：`dshgo-connect-madao@0.1.0`（npm 上当前未被占用）
+
+## 0. 前置
+
+- [ ] GitHub 仓库创建（public）
+- [ ] `package.json` 补 `repository` / `homepage` / `bugs`
+- [ ] `git push -u origin main --tags`
+- [ ] `npm publish`（或等 CI tag 发布）
+- [ ] GitHub Release 附 `dshgo-connect-madao-0.1.0.tgz`
+
+## 1. GitHub 仓库设置
+
+- Topics：`dsh-plugin`、`dsh-go`、`dsh-go-plugin`、`madao`、`codearts`、`huawei`
+  （`dsh-plugin` 是 awesome 列表和多个生态爬虫的发现入口）
+- About：把 `package.json` 的 description 粘过去，Website 填仓库 Pages 地址（见下）
+
+## 2. DSH 插件市场（官方「发现」标签页）
+
+DSH 不内置索引源，需要自己托管一份索引（`docs/market/index.json`，已通过格式 1 校验）：
+
+1. 开 GitHub Pages：Settings → Pages → Deploy from branch（`main` / `/docs`），
+   或把 `docs/market/index.json` 扔到任意 https 静态地址。
+2. 索引地址形如 `https://<owner>.github.io/dshgo-connect-madao/market/index.json`。
+3. 在 DSH 里打开「自定义插件索引」→「发现」→「添加索引源」，填入该地址。
+4. 每次发版同时更新索引里的 `version` 和 `publishTimestamp`。
+
+> `docs/market/index.json` 里的 `source` 用 `{ "type": "npm" }`；如果暂时不发 npm，
+> 可改成 `{ "type": "git", "url": "https://github.com/<owner>/dshgo-connect-madao", "commit": "<40 位 SHA>" }`。
+
+## 3. awesome-dsh-plugin（PR / Issue）
+
+仓库：https://github.com/billliao/awesome-dsh-plugin
+
+- 要求：仓库带 `dsh-plugin` topic + 声明 `dsh.bundle`（本包都满足）。
+- 分类：**Models & Providers**（`categories/models-providers.md`）。
+- 提交文案：
+
+```text
+dshgo-connect-madao — 把华为云码道（CodeArts Agent）接入 dsh-go：本机 OpenAI 兼容桥、
+原生状态条与面板、额度自动刷新、每日签到、逐模型开关。
+https://github.com/<owner>/dshgo-connect-madao
+```
+
+## 4. dsh-go Registry / Marketplace（coeasy/dsh-go）
+
+仓库：https://github.com/coeasy/dsh-go
+
+- 它的 Registry 只认 `dsh-package.json`（Manifest V2）+ immutable commit；
+  纯 Cordis bundle 需要补一份 Manifest V2 才会进入可安装 Registry。
+- 人工元数据可走 `catalog/overrides.json` 的 PR，但不会因此变成可安装 authority。
+- 若你要走这条线，告诉我，我按他们的 Manifest V2 schema 补 `dsh-package.json` 再提。
+
+## 5. 发布后自检
+
+```sh
+dsh plugin --profile web add dshgo-connect-madao
+# 或在插件市场加索引后从「发现」安装
+curl -s http://127.0.0.1:8766/healthz
+```
+
+确认：面板出现、状态条可点、凭证页可保存、模型选择器里出现「码道 CodeArts」。
