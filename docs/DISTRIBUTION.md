@@ -47,8 +47,8 @@ npm publish        # 包名 dshgo-connect-madao（npm 上当前未被占用）
 
 发布后安装方式：`dsh plugin --profile web add dshgo-connect-madao`。
 
-仓库里已经带了 `.github/workflows/publish.yml`：在仓库 Secrets 里配置 `NPM_TOKEN`，
-打 `v*` tag 时会自动 `npm publish`。
+（自动化发布可选：在仓库加 `.github/workflows/publish.yml`，配置 `NPM_TOKEN` 后打 tag 自动发布。
+按当前计划只发 GitHub，所以仓库暂不带 workflow 文件，避免推送时需要额外的 `workflow` 权限。）
 
 ## 4. 上架 dsh 插件市场
 
