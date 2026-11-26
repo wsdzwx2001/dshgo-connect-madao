@@ -38,6 +38,10 @@
         "en": "Use Huawei Cloud CodeArts Agent models in dsh-go: a local OpenAI-compatible bridge with native status strip and panels, live quota, daily check-in and per-model switches."
       },
       "author": "dshgo-connect-madao contributors",
+      "homepage": "https://github.com/wsdzwx2001/dshgo-connect-madao#readme",
+      "repository": {
+        "url": "https://github.com/wsdzwx2001/dshgo-connect-madao"
+      },
       "metadata": {
         "category": "models",
         "keywords": [
@@ -53,9 +57,11 @@
       "versions": [
         {
           "version": "0.1.0",
-          "publishTimestamp": 1795714610,
+          "publishTimestamp": 1795715900,
           "source": {
-            "type": "npm"
+            "type": "git",
+            "url": "https://github.com/wsdzwx2001/dshgo-connect-madao",
+            "commit": "730054f437103f4597d18a94413bd36e372fc2d3"
           },
           "engines": {
             "dsh": ">=0.2.1-rc.2 <0.3.0-0"
