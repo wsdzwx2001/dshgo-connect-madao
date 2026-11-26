@@ -3,6 +3,10 @@
 把华为云码道（CodeArts Agent）的模型接进 dsh-go：本机起一个 OpenAI 兼容桥，DSH 里直接选
 「码道 CodeArts」的模型；App 原生界面里有状态条和一个统一面板。
 
+- 仓库：<https://github.com/wsdzwx2001/dshgo-connect-madao>
+- 发布：<https://github.com/wsdzwx2001/dshgo-connect-madao/releases/tag/v0.1.0>
+- 插件市场索引：<https://wsdzwx2001.github.io/dshgo-connect-madao/market/index.json>
+
 参考 `dsh-connect-madao`（MIT）重写，只保留核心链路，宿主侧代码从约 5900 行降到约 1700 行。
 
 ## 做了什么
