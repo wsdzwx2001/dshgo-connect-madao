@@ -23,7 +23,7 @@ export function startMock(port = 8790) {
   const sessions = new Map()
   const seen = []
   // 测试可控：模拟网关 503、以及“所有模型都被停用”的空清单。
-  const control = { failModels: false, disableAll: false, slowChatMs: 0, chatClosed: 0 }
+  const control = { failModels: false, disableAll: false, slowChatMs: 0, chatClosed: 0, acceptNoneButThink: false, badModels: false, badStrengths: false, noCheckin: false, checkinStatus: null }
   // 福利活动：每次起服务都是「今日可签到」的初始状态
   const welfare = {
     items: [
@@ -77,13 +77,14 @@ export function startMock(port = 8790) {
           builtinModels: [
             { model_id: 'mock-fast', model_name: 'Mock-Fast', context_window: 202752, max_tokens: 65536, supports_images: true, enable: !control.disableAll, credit: [{ ratio_display: '0.1x' }] },
             { model_id: 'mock-pro', model_name: 'Mock-Pro', context_window: 1048576, max_tokens: 32768, supports_images: false, enable: !control.disableAll, credit: [{ ratio_display: '1.0x' }] },
+            ...(control.badModels ? [{ model_id: 'mock-bad-context', model_name: 'Bad', context_window: null, max_tokens: 0, enable: true }] : []),
           ],
         }),
       )
     }
     if (url.pathname === '/v1/model/thinking-variants') {
       res.writeHead(200, { 'content-type': 'application/json' })
-      return res.end(JSON.stringify({ variants: { 'mock-pro': { strengths: ['high', 'max'], default_strength: 'high' } } }))
+      return res.end(JSON.stringify({ variants: { 'mock-pro': { strengths: control.badStrengths ? ['high', 'bogus', 42] : ['high', 'max'], default_strength: 'high' } } }))
     }
     if (url.pathname === '/snap-manager/v1/statistics/plugin') {
       res.writeHead(200, { 'content-type': 'application/json' })
@@ -99,7 +100,8 @@ export function startMock(port = 8790) {
     }
     if (url.pathname === '/v1/ops/delivery') {
       res.writeHead(200, { 'content-type': 'application/json' })
-      return res.end(JSON.stringify({ code: 0, data: { items: welfare.items } }))
+      const items = control.noCheckin ? welfare.items.filter((x) => x.campaignId !== 34) : welfare.items
+      return res.end(JSON.stringify({ code: 0, data: { items: control.checkinStatus ? items.map((x) => (x.campaignId === 34 ? { ...x, status: control.checkinStatus } : x)) : items } }))
     }
     if (url.pathname === '/v1/ops/claim') {
       const body = JSON.parse(raw.toString())
@@ -155,7 +157,7 @@ export function startMock(port = 8790) {
       record.hasTools = Boolean(payload.tools)
 
       // glm-5.3 系列的行为：不接受关闭思考
-      if (payload.reasoning_effort === 'none') {
+      if (payload.reasoning_effort === 'none' && !control.acceptNoneButThink) {
         res.writeHead(400, { 'content-type': 'application/json' })
         return res.end(JSON.stringify({ error: { code: 'InferHub.ModelArts.81001', message: '该模型始终思考，不支持关闭思考；请使用 low、high 或 max。' } }))
       }
@@ -180,7 +182,16 @@ export function startMock(port = 8790) {
         ...(payload.tools ? [{ choices: [{ index: 0, delta: { tool_calls: [{ index: 0, id: 'call_1', type: 'function', function: { name: 'read', arguments: '{"path":"a"' } }] } }] }] : []),
         ...(payload.tools ? [{ choices: [{ index: 0, delta: { tool_calls: [{ index: 0, function: { arguments: ',"x":1}' } }] } }] }] : []),
         { choices: [{ index: 0, delta: {}, finish_reason: payload.tools ? 'tool_calls' : 'stop' }] },
-        { choices: [], usage: { prompt_tokens: 100, completion_tokens: 20, total_tokens: 120, prompt_tokens_details: { cached_tokens: 60 } } },
+        {
+          choices: [],
+          usage: {
+            prompt_tokens: 100,
+            completion_tokens: 20,
+            total_tokens: 120,
+            prompt_tokens_details: { cached_tokens: 60 },
+            ...(payload.reasoning_effort === 'none' && control.acceptNoneButThink ? { completion_tokens_details: { reasoning_tokens: 5 } } : {}),
+          },
+        },
       ]
 
       res.writeHead(200, { 'content-type': 'text/event-stream', 'x-encrypt-algo': 'sm4-gcm' })

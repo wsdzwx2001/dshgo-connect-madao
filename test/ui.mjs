@@ -1,7 +1,7 @@
 // 原生界面冒烟：用假的 dshGo / configEditor 加载插件，
 // 检查状态条、面板数据、凭证表单解析、签到、STS 续期、provider 注册。
 import assert from 'node:assert/strict'
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { startMock } from './mock-gateway.mjs'
 
@@ -109,6 +109,22 @@ try {
   assert.ok(panel.view({}, { locale: 'zh-CN' }).children.at(-1).items.length >= 1, '模型清单要有兜底项')
   assert.equal(edits.length, 0, '启动阶段不应写 provider（避免 HMR nested）')
 
+  // 自检失败 / 凭证错误 / 端口占用都应如实显示
+  bridge.state.test = { ok: false, steps: [{ name: '额度', ok: false, detail: '额度接口无返回' }], at: Date.now() }
+  assert.equal((await snapshot()).statusText, '自检失败')
+  emitStrip()
+  assert.match(emitted.text, /自检失败/)
+  bridge.state.test = null
+  bridge.state.error = '凭证文件内容不对：缺少 ak / sk'
+  assert.equal((await snapshot()).statusText, '凭证错误')
+  assert.match((await snapshot()).errorText, /凭证文件内容不对/)
+  bridge.state.error = null
+  bridge.state.listenError = 'listen EADDRINUSE: address already in use'
+  assert.equal((await snapshot()).statusText, '桥接端口被占用')
+  emitStrip()
+  assert.match(emitted.text, /端口被占用/)
+  bridge.state.listenError = null
+
   // 凭证表单：嵌套 / 扁平 / 再嵌套三种结构都要能读出来
   const save = (value) => credsPanel.actions.save({}, { value })
   let sr = await save({ values: { akInput: AK, skInput: SK } })
@@ -126,6 +142,12 @@ try {
   assert.equal(credsNow?.source, '已配置', JSON.stringify(credsNow))
   assert.match(String(credsNow?.ak), /^TEST…AK00$/)
   assert.equal(credsNow?.statusText, '就绪')
+  assert.equal('akInput' in credsNow, false, '刷新凭证页不应显式清空输入')
+  assert.equal(
+    readdirSync(`${FAKE_HOME}/.config/dshgo-connect-madao`).some((name) => name.includes('.tmp-')),
+    false,
+    '凭证/模型文件不应留下临时文件',
+  )
 
   // 状态条：已连上且今日可签到
   emitStrip()

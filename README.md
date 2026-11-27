@@ -1,6 +1,6 @@
 # dshgo-connect-madao
 
-把华为云码道（CodeArts Agent）的模型接进 dsh-go。装好后模型选择器里会出现「码道 CodeArts」。
+把华为云码道（CodeArts Agent）的模型接进 dsh-go。装好并在面板保存凭证后，模型选择器里会出现「码道 CodeArts」。
 
 ## 安装
 
@@ -8,14 +8,22 @@
 # 从 npm 安装
 dsh plugin --profile web add dshgo-connect-madao
 
-# 从 GitHub 安装（固定 0.1.2）
-dsh plugin --profile web add "git+https://github.com/wsdzwx2001/dshgo-connect-madao.git#v0.1.2"
+# 从 GitHub 安装（固定 0.1.3）
+dsh plugin --profile web add "git+https://github.com/wsdzwx2001/dshgo-connect-madao.git#v0.1.3"
 
 # 或本地目录
 dsh plugin --profile web add /path/to/dshgo-connect-madao
 ```
 
 装完在 App 的「引擎」页重启一次引擎。
+
+## 卸载
+
+```sh
+dsh plugin --profile web remove dshgo-connect-madao
+```
+
+卸载后如果模型选择器里还残留「码道 CodeArts」，在「设置 → 模型」里删除 `madao-go` provider。profile 里的 provider 是用户配置，插件不会在卸载时自动改它。
 
 ## 配置凭证
 

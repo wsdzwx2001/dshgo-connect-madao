@@ -25,7 +25,7 @@ dsh plugin --profile web add dshgo-connect-madao
 dsh plugin --profile web add /path/to/dshgo-connect-madao
 
 # tarball
-dsh plugin --profile web add ./dshgo-connect-madao-0.1.2.tgz
+dsh plugin --profile web add ./dshgo-connect-madao-0.1.3.tgz
 ```
 
 装完在 App「引擎」页重启一次引擎。

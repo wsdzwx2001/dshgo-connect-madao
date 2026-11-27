@@ -7,7 +7,7 @@
 
 ```sh
 npm pack
-# → dshgo-connect-madao-0.1.2.tgz
+# → dshgo-connect-madao-0.1.3.tgz
 ```
 
 包内只包含 `lib/`、`cordis.patch.yml`、`README.md`、`CHANGELOG.md`、`LICENSE`、`docs/`
@@ -24,13 +24,13 @@ node ~/.dsh/skills/dsh-go-plugin/kit/bin/check.mjs <解包目录> --load
 ```sh
 git init -b main
 git add .
-git commit -m "feat: dshgo-connect-madao 0.1.2"
-git tag v0.1.2
+git commit -m "feat: dshgo-connect-madao 0.1.3"
+git tag v0.1.3
 git remote add origin https://github.com/wsdzwx2001/dshgo-connect-madao.git
 git push -u origin main --tags
 ```
 
-然后把 GitHub Release 附上 `dshgo-connect-madao-0.1.2.tgz`，并在 `package.json` 补上：
+然后把 GitHub Release 附上 `dshgo-connect-madao-0.1.3.tgz`，并在 `package.json` 补上：
 
 ```json
 "repository": { "type": "git", "url": "git+https://github.com/wsdzwx2001/dshgo-connect-madao.git" },
@@ -61,7 +61,7 @@ dsh 的插件市场读取**索引 JSON**（格式 1），索引源可以自建�
   "title": { "zh": "…", "en": "…" },
   "plugins": [{
     "name": "dshgo-connect-madao",
-    "versions": [{ "version": "0.1.2", "publishTimestamp": 1795742988, "source": { "type": "npm" } }]
+    "versions": [{ "version": "0.1.3", "publishTimestamp": 1795744215, "source": { "type": "npm" } }]
   }]
 }
 ```

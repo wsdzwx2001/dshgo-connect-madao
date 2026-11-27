@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.3 — 2026-11-27
+
+中危问题修复：
+
+- 模型清单校验：缺 `context_window` 的模型跳过；非法 `strengths` 过滤；空清单保留旧清单，避免写坏 provider
+- `off` 兜底：网关接受 `none` 但 usage 仍返回 `reasoning_tokens>0` 时，自动记住该模型关不掉思考并去掉 off 档
+- 凭证页刷新不再显式清空输入；损坏的凭证文件会显示「凭证错误」和具体原因
+- 自检失败、端口占用会如实显示，不再伪装成「就绪」或「未配置」
+- 签到：没有活动不再让自检变红；`claimable` 为真时不再被 `status !== ELIGIBLE` 挡住
+- `messages` 结构错误返回 400；请求体明文上限调到 7MB，避免 base64 加密后撞穿网关 10MB
+- `credentials.json` / `models.json` 改为临时文件 + rename 原子写
+- `listen` 失败会记录端口错误并清理 error 监听器
+- 静态 `cordis.patch.yml` 只声明插件本身，不再写 `llm-pi-ai` 配置，避免整段替换其他 provider
+- 新增/扩展 security、ui 回归：模型字段、off usage、无签到活动、claimable、400、原子写、状态显示
+
 ## 0.1.2 — 2026-11-27
 
 高危问题修复（按 A 方案）：
