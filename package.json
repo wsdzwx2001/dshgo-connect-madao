@@ -1,6 +1,6 @@
 {
   "name": "dshgo-connect-madao",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "华为云码道（CodeArts Agent）接入 dsh-go：本机 OpenAI 兼容桥 + 原生状态条与面板",
   "type": "module",
   "main": "lib/index.js",
@@ -28,6 +28,9 @@
   ],
   "license": "MIT",
   "author": "dshgo-connect-madao contributors",
+  "scripts": {
+    "test": "node test/security.mjs && node test/e2e.mjs && node test/ui.mjs && node test/bootstrap.mjs && node test/fixes.mjs"
+  },
   "engines": {
     "node": ">=22",
     "dsh": ">=0.2.1-rc.2 <0.3.0-0"

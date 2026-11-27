@@ -7,7 +7,7 @@
 
 ```sh
 npm pack
-# → dshgo-connect-madao-0.1.3.tgz
+# → dshgo-connect-madao-0.1.4.tgz
 ```
 
 包内只包含 `lib/`、`cordis.patch.yml`、`README.md`、`CHANGELOG.md`、`LICENSE`、`docs/`
@@ -24,13 +24,13 @@ node ~/.dsh/skills/dsh-go-plugin/kit/bin/check.mjs <解包目录> --load
 ```sh
 git init -b main
 git add .
-git commit -m "feat: dshgo-connect-madao 0.1.3"
-git tag v0.1.3
+git commit -m "feat: dshgo-connect-madao 0.1.4"
+git tag v0.1.4
 git remote add origin https://github.com/wsdzwx2001/dshgo-connect-madao.git
 git push -u origin main --tags
 ```
 
-然后把 GitHub Release 附上 `dshgo-connect-madao-0.1.3.tgz`，并在 `package.json` 补上：
+然后把 GitHub Release 附上 `dshgo-connect-madao-0.1.4.tgz`，并在 `package.json` 补上：
 
 ```json
 "repository": { "type": "git", "url": "git+https://github.com/wsdzwx2001/dshgo-connect-madao.git" },
@@ -52,19 +52,18 @@ npm publish --registry=https://registry.npmjs.org/ --access public
 ## 4. 上架 dsh 插件市场
 
 dsh 的插件市场读取**索引 JSON**（格式 1），索引源可以自建，也可以并入社区索引。
-`docs/market/index.json` 已经是一份可直接托管的单插件索引（已用
-`@deepseek-ai/dsh-plugin-market-index` 校验通过）：
+`docs/market/index.json` 已经是一份可直接托管的单插件索引（已用 `@deepseek-ai/dsh-plugin-market-index`
+校验通过）。它当前登记的仍是已发布的 0.1.3；0.1.4 发布后按同样形状追加一条，
+`publishTimestamp` 用 npm 的发布时间（秒级）：
 
 ```json
-{
-  "format": 1,
-  "title": { "zh": "…", "en": "…" },
-  "plugins": [{
-    "name": "dshgo-connect-madao",
-    "versions": [{ "version": "0.1.3", "publishTimestamp": 1795744417, "source": { "type": "npm" } }]
-  }]
-}
+"versions": [
+  { "version": "0.1.3", "publishTimestamp": 1795744417, "source": { "type": "npm" } },
+  { "version": "0.1.4", "publishTimestamp": 1795750000, "source": { "type": "npm" } }
+]
 ```
+
+（上面的 1795750000 只是占位示例，替换成实际发布时间。）
 
 两条路：
 

@@ -19,7 +19,7 @@ const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url),
 assert.equal(PLUGIN_VERSION, pkg.version, '运行版本应与 package.json 一致')
 
 const mock = await startMock(MOCK)
-const bridge = createBridge({ port: BASE, gateway: `http://127.0.0.1:${MOCK}`, refreshMs: 0 })
+const bridge = createBridge({ port: BASE, gateway: `http://127.0.0.1:${MOCK}`, refreshMs: 0, modelCache: false })
 await bridge.listen()
 assert.equal(await bridge.connect(), true)
 await bridge.refreshCredit()

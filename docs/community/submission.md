@@ -1,15 +1,16 @@
 # 社区上架清单（提交用）
 
-仓库：`dshgo-connect-madao`（已发布 GitHub `v0.1.3`）
-包：`dshgo-connect-madao@0.1.3`（npm）
+仓库：`dshgo-connect-madao`（已发布 GitHub `v0.1.3`；`0.1.4` 代码已就绪，待打 tag / 发布）
+包：`dshgo-connect-madao@0.1.3`（npm；`0.1.4` 待发布）
 
 ## 0. 前置
 
 - [x] GitHub 仓库创建（public）
 - [x] `package.json` 补 `repository` / `homepage` / `bugs`
 - [x] `git push origin main --tags`
-- [x] `npm publish`
+- [x] `npm publish`（0.1.3）
 - [x] GitHub Release `v0.1.3`
+- [ ] 发布 0.1.4 后补：`git tag v0.1.4`、`npm publish`、GitHub Release、索引追加版本
 
 ## 1. GitHub 仓库设置
 

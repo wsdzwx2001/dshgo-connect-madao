@@ -56,17 +56,15 @@ try {
   assert.equal(edits.length, 0, 'HMR 事务里启动写入应被跳过')
   assert.ok(stripDef, 'strip 应已注册')
 
-  // 模拟 App 的 strip 请求：此时不在 HMR 事务里，定时器补写 provider。
+  // 不调用 strip：provider 补写不该依赖状态条是否被渲染（用户可能把它隐藏了）。
   hmrActive = false
-  const disposeStrip = stripDef({}, () => {}, { locale: 'zh-CN' })
-  await wait(2_000)
-  assert.ok(edits.length > 0, 'strip 请求后应补写 provider')
+  for (let i = 0; i < 100 && edits.length === 0; i++) await wait(100)
+  assert.ok(edits.length > 0, 'HMR 结束后应自动补写 provider（不依赖 strip）')
   const profile = edits.at(-1).providers['madao-go']
   assert.equal(profile.models.length, 2)
   assert.equal(profile.models.find((m) => m.id === 'mock-pro').reasoningEfforts.off, 'none')
   assert.equal(profile.models.find((m) => m.id === 'mock-fast').reasoningEfforts, false)
-  console.log('\n✅ 启动迁移回归通过：HMR 中跳过；strip 请求后补写，且 off 为 none')
-  disposeStrip?.()
+  console.log('\n✅ 启动迁移回归通过：HMR 中跳过；HMR 结束后自动补写，且 off 为 none')
 } finally {
   for (const dispose of disposers) {
     try {

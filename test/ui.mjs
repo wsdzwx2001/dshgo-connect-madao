@@ -95,7 +95,7 @@ try {
   // 主面板不再放凭证表单（表单在「码道凭证」页），只留入口按钮
   const mainView = JSON.stringify(panel.view({}, { locale: 'zh-CN' }))
   assert.ok(!mainView.includes('"form"'), '主面板不应再有凭证表单')
-  const credsView = JSON.stringify(credsPanel.view)
+  const credsView = JSON.stringify(credsPanel.view({}, { locale: 'zh-CN' }))
   assert.ok(credsView.includes('"maxLength":128') && credsView.includes('"maxLength":256'), '凭证页保留长度提示')
 
   // 未配凭证：状态条说人话，面板数据不崩，也没有多余提示条

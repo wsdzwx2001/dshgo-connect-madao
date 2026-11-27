@@ -23,7 +23,12 @@ export function startMock(port = 8790) {
   const sessions = new Map()
   const seen = []
   // 测试可控：模拟网关 503、以及“所有模型都被停用”的空清单。
-  const control = { failModels: false, disableAll: false, slowChatMs: 0, chatClosed: 0, acceptNoneButThink: false, badModels: false, badStrengths: false, noCheckin: false, checkinStatus: null }
+  const control = {
+    failModels: false, disableAll: false, slowChatMs: 0, chatClosed: 0, acceptNoneButThink: false,
+    badModels: false, badStrengths: false, noCheckin: false, checkinStatus: null,
+    // 以下给回归测试用：自定义“关不掉思考”的报错、先吐内容再报错、工具续传帧不带 index、福利接口故障
+    rejectNoneWith: null, errorAfterContent: false, toolNoIndex: false, failDelivery: false,
+  }
   // 福利活动：每次起服务都是「今日可签到」的初始状态
   const welfare = {
     items: [
@@ -99,6 +104,10 @@ export function startMock(port = 8790) {
       )
     }
     if (url.pathname === '/v1/ops/delivery') {
+      if (control.failDelivery) {
+        res.writeHead(500, { 'content-type': 'application/json' })
+        return res.end('{"error":"delivery down"}')
+      }
       res.writeHead(200, { 'content-type': 'application/json' })
       const items = control.noCheckin ? welfare.items.filter((x) => x.campaignId !== 34) : welfare.items
       return res.end(JSON.stringify({ code: 0, data: { items: control.checkinStatus ? items.map((x) => (x.campaignId === 34 ? { ...x, status: control.checkinStatus } : x)) : items } }))
@@ -156,10 +165,11 @@ export function startMock(port = 8790) {
       record.maxTokens = payload.max_tokens
       record.hasTools = Boolean(payload.tools)
 
-      // glm-5.3 系列的行为：不接受关闭思考
-      if (payload.reasoning_effort === 'none' && !control.acceptNoneButThink) {
+      // glm-5.3 系列的行为：不接受关闭思考（措辞可由测试替换）
+      const noneReject = control.rejectNoneWith ?? '该模型始终思考，不支持关闭思考；请使用 low、high 或 max。'
+      if (payload.reasoning_effort === 'none' && !control.acceptNoneButThink && !control.errorAfterContent) {
         res.writeHead(400, { 'content-type': 'application/json' })
-        return res.end(JSON.stringify({ error: { code: 'InferHub.ModelArts.81001', message: '该模型始终思考，不支持关闭思考；请使用 low、high 或 max。' } }))
+        return res.end(JSON.stringify({ error: { code: 'InferHub.ModelArts.81001', message: noneReject } }))
       }
 
       // 让测试有机会在响应头之前断开，验证桥接会取消上游。
@@ -175,12 +185,14 @@ export function startMock(port = 8790) {
         if (res.destroyed) return
       }
 
+      // 续传帧：index 可省略（有些实现会省），用来验证桥接不会把参数拆成第二个调用
+      const toolTail = control.toolNoIndex ? { function: { arguments: ',"x":1}' } } : { index: 0, function: { arguments: ',"x":1}' } }
       const frames = [
         { choices: [{ index: 0, delta: { role: 'assistant', reasoning_content: '想一想。' } }] },
         { choices: [{ index: 0, delta: { content: `你好，${payload.model}。` } }] },
         { choices: [{ index: 0, delta: { content: '第二段。' } }] },
         ...(payload.tools ? [{ choices: [{ index: 0, delta: { tool_calls: [{ index: 0, id: 'call_1', type: 'function', function: { name: 'read', arguments: '{"path":"a"' } }] } }] }] : []),
-        ...(payload.tools ? [{ choices: [{ index: 0, delta: { tool_calls: [{ index: 0, function: { arguments: ',"x":1}' } }] } }] }] : []),
+        ...(payload.tools ? [{ choices: [{ index: 0, delta: { tool_calls: [toolTail] } }] }] : []),
         { choices: [{ index: 0, delta: {}, finish_reason: payload.tools ? 'tool_calls' : 'stop' }] },
         {
           choices: [],
@@ -196,6 +208,12 @@ export function startMock(port = 8790) {
 
       res.writeHead(200, { 'content-type': 'text/event-stream', 'x-encrypt-algo': 'sm4-gcm' })
       let index = 0
+      if (control.errorAfterContent) {
+        // 先给一帧正文，再给一帧“关不掉思考”的错误：桥接不该再重发（会重复内容）
+        res.write(encryptSseChunk(key, keyId, `data: ${JSON.stringify({ choices: [{ index: 0, delta: { content: '半截回答。' } }] })}\n\n`, index++))
+        res.write(encryptSseChunk(key, keyId, `data: ${JSON.stringify({ error: { code: 'InferHub.ModelArts.81001', message: noneReject } })}\n\n`, index++))
+        return res.end()
+      }
       for (const frame of frames) res.write(encryptSseChunk(key, keyId, `data: ${JSON.stringify(frame)}\n\n`, index++))
       res.write(encryptSseChunk(key, keyId, 'data: [DONE]\n\n', index++))
       return res.end()
