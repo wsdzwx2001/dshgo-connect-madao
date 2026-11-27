@@ -35,7 +35,7 @@ node ~/.dsh/skills/dsh-go-plugin/kit/bin/check.mjs /tmp/pk/package --load
 ```sh
 git add -A
 git commit -m "fix: <一句话说明>"
-git tag -a v0.1.5 -m "v0.1.5"      # 用附注 tag，和已有 tag 保持一致
+git tag -a v0.1.6 -m "v0.1.6"      # 用附注 tag，和已有 tag 保持一致
 git push origin main --tags
 ```
 
@@ -64,11 +64,11 @@ tag 推上去就够用了；Release 只是给人看的说明页，建议建，�
 GH_TOKEN=... node --input-type=module -e '
 import fs from "node:fs";
 const md = fs.readFileSync("CHANGELOG.md", "utf8");
-const body = "## 0.1.5" + md.split("## 0.1.5")[1].split("## 0.1.4")[0];
+const body = "## 0.1.6" + md.split("## 0.1.6")[1].split("\n## 0.1.")[0];
 const r = await fetch("https://api.github.com/repos/wsdzwx2001/dshgo-connect-madao/releases", {
   method: "POST",
   headers: { authorization: `Bearer ${process.env.GH_TOKEN}`, "content-type": "application/json" },
-  body: JSON.stringify({ tag_name: "v0.1.5", name: "v0.1.5", body }),
+  body: JSON.stringify({ tag_name: "v0.1.6", name: "v0.1.6", body }),
 });
 console.log(r.status, (await r.json()).html_url);
 '
@@ -81,13 +81,13 @@ npm login                       # 或临时 userconfig 里放 //registry.npmjs.o
 npm publish --registry=https://registry.npmjs.org/ --access public
 ```
 
-顺序建议：先 push tag（第 2 节），再 `npm publish`，这样 `#v0.1.5` 这种固定装法立刻可用。
+顺序建议：先 push tag（第 2 节），再 `npm publish`，这样 `#v0.1.6` 这种固定装法立刻可用。
 
 发布后核对：
 
 ```sh
 npm view dshgo-connect-madao dist-tags version --registry=https://registry.npmjs.org/ --prefer-online
-npm view dshgo-connect-madao time.0.1.5 --registry=https://registry.npmjs.org/   # 第 4 节要用这个时间戳
+npm view dshgo-connect-madao time.0.1.6 --registry=https://registry.npmjs.org/   # 第 4 节要用这个时间戳
 ```
 
 - 同版本号不能重复发布；改代码必须升版本。
@@ -100,15 +100,15 @@ dsh 的插件市场读取**索引 JSON**（格式 1），可以并入社区索�
 
 ```json
 "versions": [
-  { "version": "0.1.4", "publishTimestamp": 1795748709, "source": { "type": "npm" } },
-  { "version": "0.1.5", "publishTimestamp": 1795751789, "source": { "type": "npm" } }
+  { "version": "0.1.5", "publishTimestamp": 1795751789, "source": { "type": "npm" } },
+  { "version": "0.1.6", "publishTimestamp": 1795753000, "source": { "type": "npm" } }
 ]
 ```
 
-- `publishTimestamp` 用 **npm 的发布时间，秒级**（`npm view dshgo-connect-madao time.0.1.5`，
-  或 registry packument 里的 `time["0.1.5"]`），不要用本地打包时间。
+- `publishTimestamp` 用 **npm 的发布时间，秒级**（`npm view dshgo-connect-madao time.0.1.6`，
+  或 registry packument 里的 `time["0.1.6"]`），不要用本地打包时间。
 - 版本号必须和 `package.json` 一致，旧版本条目保留，别删。
-- 改完索引单独提交一次（`docs: 0.1.5 市场索引发布时间戳`），这样 tag 指向发布代码、
+- 改完索引单独提交一次（`docs: 0.1.6 市场索引发布时间戳`），这样 tag 指向发布代码、
   HEAD 指向索引更新，和 0.1.3 的做法一致。
 
 自检索引格式：

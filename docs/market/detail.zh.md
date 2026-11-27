@@ -13,7 +13,7 @@
 - **额度自动刷新**：每 15 秒一次，对话结束也会刷新；额度接口报错只影响这一块，不影响对话，并会退避重试
 - **每日签到**：查看状态、一键领取
 - **逐模型开关**：点模型行即可启用 / 停用，停用的模型从模型选择器消失
-- **思考档位由内置规则决定**：规则表（如 glm-5.3 系列不给「关闭思考」）→ 网关声明的档位 → 判断不了时默认「不思考 / 高 / 最高」；网关若拒绝关闭思考，会自动去掉该档重发，不需要人工重置
+- **思考档位由内置规则决定**：当前 12 个模型的档位全部写死在规则表里（glm-5.3 系列不给「关闭思考」，openpangu / 智速模式无思考档，deepseek / kimi 四档齐全）；网关以后新增的模型先按声明走、再退默认「不思考 / 高 / 最高」。不需要人工调档
 
 ## 安装
 
@@ -25,7 +25,7 @@ dsh plugin --profile web add dshgo-connect-madao
 dsh plugin --profile web add /path/to/dshgo-connect-madao
 
 # tarball
-dsh plugin --profile web add ./dshgo-connect-madao-0.1.5.tgz
+dsh plugin --profile web add ./dshgo-connect-madao-0.1.6.tgz
 ```
 
 装完在 App「引擎」页重启一次引擎。
