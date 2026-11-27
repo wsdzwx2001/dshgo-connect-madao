@@ -1,16 +1,17 @@
 # 社区上架清单（提交用）
 
-仓库：`dshgo-connect-madao`（已发布 GitHub `v0.1.3`；`0.1.4` 代码已就绪，待打 tag / 发布）
-包：`dshgo-connect-madao@0.1.3`（npm；`0.1.4` 待发布）
+仓库：`dshgo-connect-madao`（GitHub `v0.1.4`）
+包：`dshgo-connect-madao@0.1.4`（npm latest）
 
 ## 0. 前置
 
 - [x] GitHub 仓库创建（public）
 - [x] `package.json` 补 `repository` / `homepage` / `bugs`
 - [x] `git push origin main --tags`
-- [x] `npm publish`（0.1.3）
-- [x] GitHub Release `v0.1.3`
-- [ ] 发布 0.1.4 后补：`git tag v0.1.4`、`npm publish`、GitHub Release、索引追加版本
+- [x] `git tag -a v0.1.4` + `git push origin main --tags`
+- [x] `npm publish`（0.1.4，latest）
+- [x] GitHub Release `v0.1.4`（正文取自 CHANGELOG；**不附 tgz**，npm 是唯一权威来源）
+- [x] 市场索引追加 0.1.4 与发布时间戳
 
 ## 1. GitHub 仓库设置
 
@@ -26,7 +27,8 @@ DSH 不内置索引源，需要自己托管一份索引（`docs/market/index.jso
    或把 `docs/market/index.json` 扔到任意 https 静态地址。
 2. 索引地址形如 `https://wsdzwx2001.github.io/dshgo-connect-madao/market/index.json`。
 3. 在 DSH 里打开「自定义插件索引」→「发现」→「添加索引源」，填入该地址。
-4. 每次发版同时更新索引里的 `version` 和 `publishTimestamp`。
+4. 每次发版追加一条版本记录（`version` + npm 的 `publishTimestamp`，秒级），旧条目保留；
+   细节见 `docs/DISTRIBUTION.md` 第 4 节。
 
 > `docs/market/index.json` 里的 `source` 用 `{ "type": "npm" }`；如果暂时不发 npm，
 > 可改成 `{ "type": "git", "url": "https://github.com/wsdzwx2001/dshgo-connect-madao", "commit": "<40 位 SHA>" }`。
@@ -59,7 +61,7 @@ https://github.com/wsdzwx2001/dshgo-connect-madao
 ```sh
 dsh plugin --profile web add dshgo-connect-madao
 # 或在插件市场加索引后从「发现」安装
-curl -s -H 'Authorization: Bearer bridge-local' http://127.0.0.1:8766/healthz
+node -e 'const r = await fetch("http://127.0.0.1:8766/healthz", { headers: { authorization: "Bearer bridge-local" } }); const j = await r.json(); console.log(j.version, j.models, j.credit && j.credit.remain)'
 ```
 
 确认：面板出现、状态条可点、凭证页可保存、模型选择器里出现「码道 CodeArts」。

@@ -8,7 +8,7 @@
 # 从 npm 安装
 dsh plugin --profile web add dshgo-connect-madao
 
-# 从 GitHub 安装（固定版本；0.1.4 打 tag 后可用）
+# 从 GitHub 安装（固定 0.1.4）
 dsh plugin --profile web add "git+https://github.com/wsdzwx2001/dshgo-connect-madao.git#v0.1.4"
 
 # 或本地目录
@@ -16,6 +16,9 @@ dsh plugin --profile web add /path/to/dshgo-connect-madao
 ```
 
 装完在 App 的「引擎」页重启一次引擎。
+
+npm 是唯一发布来源；GitHub Release 只放说明，不附 tgz。需要离线包时自己 `npm pack`
+或从 registry 下载 tarball。
 
 ## 卸载
 

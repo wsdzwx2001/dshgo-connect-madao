@@ -2,7 +2,15 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { parse } from '/opt/dsh/node_modules/yaml/dist/index.js'
+// yaml 只是用来解析静态 patch；仓库不依赖它，装了就用，没装就退回文本检查。
+let parse = null
+try {
+  ;({ parse } = await import('yaml'))
+} catch {
+  try {
+    ;({ parse } = await import('/opt/dsh/node_modules/yaml/dist/index.js'))
+  } catch {}
+}
 import { BRIDGE_TOKEN, PLUGIN_VERSION, createBridge } from '../lib/bridge.js'
 import { startMock } from './mock-gateway.mjs'
 
@@ -164,9 +172,13 @@ try {
   const patchAfter = readFileSync(patchPath, 'utf8')
   assert.equal(patchAfter, patchBefore, '运行时不应改写包内 cordis.patch.yml')
   assert.doesNotMatch(patchAfter, /off:\s*null/)
-  const patchRows = parse(patchAfter)
-  assert.equal(patchRows.some((row) => row.id === 'llm-pi-ai'), false, '静态 patch 不应整段替换 llm-pi-ai 配置')
-  assert.equal(JSON.stringify(patchRows).includes('madao-go'), false, 'provider 只应写进 profile，不写 bundle patch')
+  assert.doesNotMatch(patchAfter, /llm-pi-ai\s*:/, '静态 patch 不应整段替换 llm-pi-ai 配置')
+  assert.doesNotMatch(patchAfter, /madao-go/, 'provider 只应写进 profile，不写 bundle patch')
+  if (parse) {
+    const patchRows = parse(patchAfter)
+    assert.equal(patchRows.some((row) => row.id === 'llm-pi-ai'), false, '静态 patch 不应整段替换 llm-pi-ai 配置')
+    assert.equal(JSON.stringify(patchRows).includes('madao-go'), false, 'provider 只应写进 profile，不写 bundle patch')
+  }
 
   console.log('\n✅ 安全与同步回归通过：鉴权 / Origin / 415 / 同步失败保留清单 / 静态 patch 未改写')
 } finally {
