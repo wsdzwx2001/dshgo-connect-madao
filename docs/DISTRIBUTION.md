@@ -101,7 +101,7 @@ dsh 的插件市场读取**索引 JSON**（格式 1），可以并入社区索�
 ```json
 "versions": [
   { "version": "0.1.5", "publishTimestamp": 1795751789, "source": { "type": "npm" } },
-  { "version": "0.1.6", "publishTimestamp": 1795753000, "source": { "type": "npm" } }
+  { "version": "0.1.6", "publishTimestamp": 1795752629, "source": { "type": "npm" } }
 ]
 ```
 
