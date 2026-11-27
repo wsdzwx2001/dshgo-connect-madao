@@ -12,11 +12,11 @@ const creds = { ak: AK, sk: SK, securityToken: TOKEN }
 
 const keyFromShared = (shared) => ({ key: createHash('sha256').update(shared).digest().subarray(0, 16) })
 
-function encryptSseChunk(key, keyId, plain, index) {
+function encryptSseChunk(key, keyId, plain, index, nl = '\n') {
   const iv = randomBytes(12)
   const aad = Buffer.from(`${keyId}|${index}`, 'utf8')
   const { ciphertext, tag } = sm4GcmEncrypt(key.key, iv, Buffer.from(plain, 'utf8'), aad)
-  return `${iv.toString('base64')}:${tag.toString('base64')}:${ciphertext.toString('base64')}\n\n`
+  return `${iv.toString('base64')}:${tag.toString('base64')}:${ciphertext.toString('base64')}${nl}${nl}`
 }
 
 export function startMock(port = 8790) {
@@ -28,6 +28,7 @@ export function startMock(port = 8790) {
     badModels: false, badStrengths: false, noCheckin: false, checkinStatus: null,
     // 以下给回归测试用：自定义“关不掉思考”的报错、先吐内容再报错、工具续传帧不带 index、福利接口故障
     rejectNoneWith: null, errorAfterContent: false, toolNoIndex: false, failDelivery: false,
+    crlfSse: false, failHeartbeat: false,
   }
   // 福利活动：每次起服务都是「今日可签到」的初始状态
   const welfare = {
@@ -129,6 +130,10 @@ export function startMock(port = 8790) {
       return res.end(JSON.stringify({ code: 0, data: { ok: true } }))
     }
     if (url.pathname.startsWith('/snap-manager/v1/chat-session/heartbeat')) {
+      if (control.failHeartbeat) {
+        res.writeHead(500, { 'content-type': 'application/json' })
+        return res.end('{"error":"heartbeat down"}')
+      }
       res.writeHead(200, { 'content-type': 'application/json' })
       return res.end('{"ok":true}')
     }
@@ -210,12 +215,12 @@ export function startMock(port = 8790) {
       let index = 0
       if (control.errorAfterContent) {
         // 先给一帧正文，再给一帧“关不掉思考”的错误：桥接不该再重发（会重复内容）
-        res.write(encryptSseChunk(key, keyId, `data: ${JSON.stringify({ choices: [{ index: 0, delta: { content: '半截回答。' } }] })}\n\n`, index++))
-        res.write(encryptSseChunk(key, keyId, `data: ${JSON.stringify({ error: { code: 'InferHub.ModelArts.81001', message: noneReject } })}\n\n`, index++))
+        res.write(encryptSseChunk(key, keyId, `data: ${JSON.stringify({ choices: [{ index: 0, delta: { content: '半截回答。' } }] })}`, index++, control.crlfSse ? '\r\n' : '\n'))
+        res.write(encryptSseChunk(key, keyId, `data: ${JSON.stringify({ error: { code: 'InferHub.ModelArts.81001', message: noneReject } })}`, index++, control.crlfSse ? '\r\n' : '\n'))
         return res.end()
       }
-      for (const frame of frames) res.write(encryptSseChunk(key, keyId, `data: ${JSON.stringify(frame)}\n\n`, index++))
-      res.write(encryptSseChunk(key, keyId, 'data: [DONE]\n\n', index++))
+      for (const frame of frames) res.write(encryptSseChunk(key, keyId, `data: ${JSON.stringify(frame)}`, index++, control.crlfSse ? '\r\n' : '\n'))
+      res.write(encryptSseChunk(key, keyId, 'data: [DONE]', index++, control.crlfSse ? '\r\n' : '\n'))
       return res.end()
     }
 

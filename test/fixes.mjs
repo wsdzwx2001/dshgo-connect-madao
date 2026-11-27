@@ -1,7 +1,9 @@
-// 回归：0.1.4 修的 21 项里能在本机复现的部分。
+// 回归：能在本机复现的修复项。
 // 覆盖：额度 4xx 不再让自检变红、错误体可见、退避、签到保旧值、模型缓存、
 //       流中途报错不重发、工具续传帧没 index、413、思考档位误判、未配置不写 provider、
-//       凭证解析优先认字段名、损坏凭证回退旧路径。
+//       凭证解析优先认字段名、损坏凭证回退旧路径、stale 后步骤表回绿、
+//       max_tokens 收敛、图片能力校验、CRLF 分隔的 SSE、心跳失败记账、
+//       手填令牌过期自动换 STS、缓存里的非法档位过滤。
 import assert from 'node:assert/strict'
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { startMock } from './mock-gateway.mjs'
@@ -23,8 +25,14 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 const mock = await startMock(MOCK)
 const realFetch = globalThis.fetch
 let creditStatus = 200
+let iamCalls = 0
 globalThis.fetch = async (input, init) => {
   const url = String(input?.url ?? input)
+  // 拦掉真实 IAM：返回与模拟网关同一套临时凭证
+  if (url.includes('iam.cn-north-4.myhuaweicloud.com')) {
+    iamCalls++
+    return new Response(JSON.stringify({ credential: { access: AK, secret: SK, securitytoken: TOKEN, expires_at: new Date(Date.now() + 3600e3).toISOString() } }), { status: 200, headers: { 'content-type': 'application/json' } })
+  }
   if (url.includes('/snap-manager/v1/statistics/plugin') && creditStatus !== 200) {
     return new Response('{"code":"InvalidParameter","message":"missing start_date"}', {
       status: creditStatus,
@@ -256,8 +264,10 @@ try {
     await b3.refreshCredit({ force: true })
     strip({}, (v) => (emitted = v), { locale: 'zh-CN' })
     assert.equal(emitted.text, '码道 剩 380', JSON.stringify(emitted))
-    assert.equal((await pullData(panels, 'madao')).errorText, '-')
-    console.log('· 状态条：额度异常只提示，恢复后自动消失')
+    const recovered = await pullData(panels, 'madao')
+    assert.equal(recovered.errorText, '-')
+    assert.ok(recovered.steps.every((x) => x.status === 'done'), 'stale 后步骤表不该还挂红叉：' + JSON.stringify(recovered.steps))
+    console.log('· 状态条：额度异常只提示，恢复后自动消失（步骤表也回绿）')
   }
 
   // ── 11. 凭证解析：明确字段名优先，不被干扰串带跑 ────────────────
@@ -287,7 +297,128 @@ try {
     console.log('· 凭证文件损坏：仍能从旧路径读回来')
   }
 
-  console.log('\n✅ 0.1.4 回归通过：额度容错 / 状态条 / 思考档位 / 工具调用 / 413 / 签到 / 缓存 / 凭证')
+  // ── 13. max_tokens：不传按模型上限、超限压回上限 ───────────────
+  {
+    const upstream = () => mock.seen.filter((x) => x.path === '/api/v2/chat/completions').at(-1).maxTokens
+    const call = (body) =>
+      realFetch('http://127.0.0.1:8820/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${BRIDGE_TOKEN}` },
+        body: JSON.stringify(body),
+      })
+    await (await call({ model: 'mock-fast', stream: false, messages: [{ role: 'user', content: 'hi' }] })).text()
+    assert.equal(upstream(), 32768, '不传时应按模型上限（mock-fast 声明 65536，但上限 32768）')
+    await (await call({ model: 'mock-fast', stream: false, max_tokens: 999999, messages: [{ role: 'user', content: 'hi' }] })).text()
+    assert.equal(upstream(), 32768, '超过模型上限应压回上限')
+    await (await call({ model: 'mock-fast', stream: false, max_tokens: 512, messages: [{ role: 'user', content: 'hi' }] })).text()
+    assert.equal(upstream(), 512, '小于上限时保持客户端给的值')
+    console.log('· max_tokens：不传按模型上限、超限压回')
+  }
+
+  // ── 14. 图片：模型不支持就提前 400，别丢给网关 ──────────────────
+  {
+    const call = (model) =>
+      realFetch('http://127.0.0.1:8820/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${BRIDGE_TOKEN}` },
+        body: JSON.stringify({ model, stream: false, messages: [{ role: 'user', content: [{ type: 'text', text: '看图' }, { type: 'image_url', image_url: { url: 'data:image/png;base64,iVBORw0KGgo=' } }] }] }),
+      })
+    const bad = await call('mock-pro') // mock-pro 不支持图片
+    assert.equal(bad.status, 400)
+    assert.match((await bad.json()).error.message, /不支持图片输入/)
+    const ok = await call('mock-fast')
+    assert.equal(ok.status, 200, '支持图片的模型应照常转发')
+    await ok.text()
+    console.log('· 图片：不支持图片的模型提前 400')
+  }
+
+  // ── 15. SSE 用 \r\n 分隔也要能流式解析 ───────────────────────────
+  {
+    mock.control.crlfSse = true
+    const r2 = await realFetch('http://127.0.0.1:8820/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${BRIDGE_TOKEN}` },
+      body: JSON.stringify({ model: 'mock-fast', messages: [{ role: 'user', content: 'hi' }] }),
+    })
+    assert.equal(r2.status, 200)
+    const text = await r2.text()
+    assert.match(text, /你好，mock-fast。/, 'CRLF 分隔的 SSE 也要解出正文')
+    assert.match(text, /\[DONE\]/, '应正常收尾')
+    mock.control.crlfSse = false
+    console.log('· SSE：\\r\\n 分隔也能流式解析')
+  }
+
+  // ── 16. 心跳失败不再静默：记账但不影响对话 ──────────────────────
+  {
+    mock.control.failHeartbeat = true
+    bridge.state.heartbeatFailures = 0
+    const r3 = await realFetch('http://127.0.0.1:8820/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${BRIDGE_TOKEN}` },
+      body: JSON.stringify({ model: 'mock-fast', stream: false, messages: [{ role: 'user', content: 'hi' }] }),
+    })
+    await r3.text()
+    assert.equal(r3.status, 200, '心跳失败不该影响对话')
+    assert.ok(bridge.status().heartbeatFailures > 0)
+    assert.match(String(bridge.status().heartbeatError), /HTTP 500/)
+    mock.control.failHeartbeat = false
+    const r4 = await realFetch('http://127.0.0.1:8820/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${BRIDGE_TOKEN}` },
+      body: JSON.stringify({ model: 'mock-fast', stream: false, messages: [{ role: 'user', content: 'hi' }] }),
+    })
+    await r4.text()
+    assert.equal(bridge.status().heartbeatFailures, 0, '心跳恢复后应清零')
+    assert.equal(bridge.status().heartbeatError, null)
+    console.log('· 心跳：失败有记账，恢复后清零')
+  }
+
+  // ── 17. 手填令牌运行中过期：自动改走 AK/SK 换 STS ───────────────
+  {
+    process.env.MADAO_AK = AK
+    process.env.MADAO_SK = SK
+    process.env.MADAO_SECURITY_TOKEN = TOKEN
+    process.env.MADAO_SECURITY_TOKEN_EXPIRES = new Date(Date.now() + 3600e3).toISOString()
+    const b5 = createBridge({ port: 8833, gateway: `http://127.0.0.1:${MOCK}`, refreshMs: 0 })
+    bridges.push(b5)
+    await b5.listen()
+    assert.equal(await b5.connect(), true)
+    assert.ok(b5.state.tokenOnly > 0, '应识别为临时令牌')
+    assert.equal(b5.state.sts, null)
+    // 把到期时间调到 1 分钟后，模拟"运行中过期"
+    b5.state.tokenOnly = Date.now() + 30_000
+    const iamBefore = iamCalls
+    const r5 = await realFetch('http://127.0.0.1:8833/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${BRIDGE_TOKEN}` },
+      body: JSON.stringify({ model: 'mock-fast', stream: false, messages: [{ role: 'user', content: 'hi' }] }),
+    })
+    await r5.text()
+    assert.equal(r5.status, 200)
+    assert.ok(iamCalls > iamBefore, '令牌将过期时应主动换 STS')
+    assert.ok(b5.state.sts, '应已切换到 STS 模式')
+    assert.equal(b5.state.tokenOnly, 0)
+    delete process.env.MADAO_SECURITY_TOKEN_EXPIRES
+    delete process.env.MADAO_SECURITY_TOKEN
+    delete process.env.MADAO_AK
+    delete process.env.MADAO_SK
+    console.log('· 临时令牌过期：自动换 STS')
+  }
+
+  // ── 18. 缓存里的非法档位被过滤（否则整段 llm-pi-ai 配置会校验失败）──
+  {
+    msync: {
+      const cachePath = `${HOME}/.config/dshgo-connect-madao/models-cache.json`
+      const broken = { at: Date.now(), models: [{ id: 'glm-5.3', name: 'GLM-5.3', context: 1024, maxOutput: 512, strengths: ['bogus', 'off', 'high'], known: true }] }
+      writeFileSync(cachePath, JSON.stringify(broken), 'utf8')
+      const b6 = createBridge({ port: 8834, gateway: `http://127.0.0.1:${MOCK}`, refreshMs: 0 })
+      bridges.push(b6)
+      assert.deepEqual(b6.state.models[0].strengths, ['high'], '非法档位应从缓存里滤掉')
+      console.log('· 模型缓存：非法档位被过滤')
+    }
+  }
+
+  console.log('\n✅ 回归通过：额度容错 / 状态条 / 档位规则 / 工具调用 / 413 / 签到 / 缓存 / 凭证 / max_tokens / 图片 / CRLF / 心跳')
 } finally {
   for (const dispose of disposers) {
     try {

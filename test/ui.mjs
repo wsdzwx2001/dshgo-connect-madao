@@ -208,11 +208,24 @@ try {
   })
   assert.equal(off.status, 200, '关思考被拒不等于对话失败')
   assert.equal((await off.json()).choices[0].message.content, '你好，mock-fast。第二段。')
-  assert.ok(bridge.state.noOff.has('mock-fast'), '应记住该模型不支持关思考')
+  assert.ok(bridge.state.noOff.has('mock-fast'), '本次运行内应记住该模型关不掉思考')
   await wait(700)
-  assert.equal('off' in edits.at(-1).providers['madao-go'].models.find((m) => m.id === 'mock-pro')?.reasoningEfforts ?? {}, true)
-  const fastPrefix = edits.at(-1).providers['madao-go'].models.find((m) => m.id === 'mock-fast')
-  assert.equal(fastPrefix ? 'off' in (fastPrefix.reasoningEfforts || {}) : false, false, 'mock-fast 的 off 档应被移除')
+  const profileModels = edits.at(-1).providers['madao-go'].models
+  // 档位由规则表决定，不再因为运行时"学到的"结果改 provider
+  assert.deepEqual(profileModels.find((m) => m.id === 'mock-pro')?.reasoningEfforts, { off: 'none', high: 'high', max: 'max' })
+  assert.deepEqual(profileModels.find((m) => m.id === 'mock-fast')?.reasoningEfforts, { off: 'none', high: 'high', max: 'max' }, '判断不了的模型按默认三档')
+  // 已知关不掉之后，同一次运行里不再发 none 去撞网关：上游只该收到 1 次
+  mock.seen.length = 0
+  const offAgain = await fetch('http://127.0.0.1:8796/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${BRIDGE_TOKEN}` },
+    body: JSON.stringify({ model: 'mock-fast', stream: false, strength: 'off', messages: [{ role: 'user', content: 'hi' }] }),
+  })
+  assert.equal(offAgain.status, 200)
+  await offAgain.text()
+  const againCalls = mock.seen.filter((r) => r.path === '/api/v2/chat/completions')
+  assert.equal(againCalls.length, 1, '已知关不掉时不应再发一次 none')
+  assert.equal(againCalls[0].reasoningEffort, undefined, '应直接不带 reasoning_effort')
 
   // 面板按钮（测试/同步会同时刷新两个面板，返回的是效果数组）
   const toastOf = (r) => (Array.isArray(r) ? r.find((x) => x.toast)?.toast : r.toast)

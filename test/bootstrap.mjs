@@ -62,9 +62,11 @@ try {
   assert.ok(edits.length > 0, 'HMR 结束后应自动补写 provider（不依赖 strip）')
   const profile = edits.at(-1).providers['madao-go']
   assert.equal(profile.models.length, 2)
-  assert.equal(profile.models.find((m) => m.id === 'mock-pro').reasoningEfforts.off, 'none')
-  assert.equal(profile.models.find((m) => m.id === 'mock-fast').reasoningEfforts, false)
-  console.log('\n✅ 启动迁移回归通过：HMR 中跳过；HMR 结束后自动补写，且 off 为 none')
+  // 网关声明了 high/max 的模型：规则表允许 off，于是三档齐全
+  assert.deepEqual(profile.models.find((m) => m.id === 'mock-pro').reasoningEfforts, { off: 'none', high: 'high', max: 'max' })
+  // 网关完全没声明档位的模型（判断不了）：按默认三档，不再写 false
+  assert.deepEqual(profile.models.find((m) => m.id === 'mock-fast').reasoningEfforts, { off: 'none', high: 'high', max: 'max' })
+  console.log('\n✅ 启动迁移回归通过：HMR 中跳过；HMR 结束后自动补写，档位按规则表')
 } finally {
   for (const dispose of disposers) {
     try {
