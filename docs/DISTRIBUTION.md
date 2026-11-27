@@ -101,13 +101,13 @@ dsh 的插件市场读取**索引 JSON**（格式 1），可以并入社区索�
 ```json
 "versions": [
   { "version": "0.1.4", "publishTimestamp": 1795748709, "source": { "type": "npm" } },
-  { "version": "0.1.5", "publishTimestamp": <npm 发布时间>, "source": { "type": "npm" } }
+  { "version": "0.1.5", "publishTimestamp": 1795751789, "source": { "type": "npm" } }
 ]
 ```
 
 - `publishTimestamp` 用 **npm 的发布时间，秒级**（`npm view dshgo-connect-madao time.0.1.5`，
   或 registry packument 里的 `time["0.1.5"]`），不要用本地打包时间。
-- 版本号必须和 `package.json` 一致，旧版本条目保留，别删。示例里的 0.1.5 时间戳是占位，按上面命令取真实值。
+- 版本号必须和 `package.json` 一致，旧版本条目保留，别删。
 - 改完索引单独提交一次（`docs: 0.1.5 市场索引发布时间戳`），这样 tag 指向发布代码、
   HEAD 指向索引更新，和 0.1.3 的做法一致。
 
