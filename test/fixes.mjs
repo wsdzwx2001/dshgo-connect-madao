@@ -563,7 +563,48 @@ try {
     console.log('· 换账号：旧额度 / 签到 / 心跳记录被清掉，同账号重连保留')
   }
 
-  console.log('\n✅ 回归通过：额度容错 / 状态条 / 档位规则 / 工具调用 / 413 / 签到 / 缓存 / 凭证 / max_tokens / 图片 / CRLF / 心跳 / 401 自救 / 自动重连 / 换账号清旧状态')
+  // ── 24. 流式出错：不补 finish / [DONE]，也不把自检失败洗白 ──────
+  {
+    process.env.MADAO_AK = AK
+    process.env.MADAO_SK = SK
+    delete process.env.MADAO_SECURITY_TOKEN
+    delete process.env.MADAO_SECURITY_TOKEN_EXPIRES
+    const b11 = createBridge({ port: 8839, gateway: `http://127.0.0.1:${MOCK}`, refreshMs: 0 })
+    bridges.push(b11)
+    await b11.listen()
+    assert.equal(await b11.connect(), true)
+    // 状态里挂着一次失败的自检：这次对话也失败了，不能因此变成 stale（洗白）。
+    b11.state.test = { ok: false, steps: [{ name: '凭证', ok: false, detail: 'HTTP 401' }] }
+    mock.control.errorAfterContent = true
+    const r7 = await realFetch('http://127.0.0.1:8839/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${BRIDGE_TOKEN}` },
+      body: JSON.stringify({ model: 'mock-fast', stream: true, messages: [{ role: 'user', content: 'hi' }] }),
+    })
+    assert.equal(r7.status, 200)
+    const raw = await r7.text()
+    assert.ok(raw.includes('半截回答'), '先到的正文应转发')
+    assert.ok(raw.includes('"error"'), '错误帧应转发')
+    const frames = raw
+      .split('\n\n')
+      .map((block) => block.trim())
+      .filter((block) => block.startsWith('data:'))
+      .map((block) => block.slice(5).trim())
+    assert.equal(frames.includes('[DONE]'), false, '失败的流不该补 [DONE]')
+    const payloads = frames.filter((f) => f !== '[DONE]').map((f) => JSON.parse(f))
+    assert.equal(
+      payloads.some((p) => p.choices?.[0]?.finish_reason),
+      false,
+      '失败的流不该补 finish_reason（那等于说成正常结束）',
+    )
+    assert.notEqual(b11.state.test?.stale, true, '失败的对话不该把自检失败洗白')
+    mock.control.errorAfterContent = false
+    delete process.env.MADAO_AK
+    delete process.env.MADAO_SK
+    console.log('· 流式出错：不补 finish / [DONE]，也不洗白自检失败')
+  }
+
+  console.log('\n✅ 回归通过：额度容错 / 状态条 / 档位规则 / 工具调用 / 413 / 签到 / 缓存 / 凭证 / max_tokens / 图片 / CRLF / 心跳 / 401 自救 / 自动重连 / 换账号清旧状态 / 流式失败收尾')
 } finally {
   for (const dispose of disposers) {
     try {
