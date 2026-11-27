@@ -61,7 +61,7 @@ dsh 的插件市场读取**索引 JSON**（格式 1），索引源可以自建�
   "title": { "zh": "…", "en": "…" },
   "plugins": [{
     "name": "dshgo-connect-madao",
-    "versions": [{ "version": "0.1.3", "publishTimestamp": 1795744215, "source": { "type": "npm" } }]
+    "versions": [{ "version": "0.1.3", "publishTimestamp": 1795744417, "source": { "type": "npm" } }]
   }]
 }
 ```
