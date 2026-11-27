@@ -7,7 +7,7 @@
 
 ```sh
 npm pack
-# → dshgo-connect-madao-0.1.0.tgz
+# → dshgo-connect-madao-0.1.2.tgz
 ```
 
 包内只包含 `lib/`、`cordis.patch.yml`、`README.md`、`CHANGELOG.md`、`LICENSE`、`docs/`
@@ -24,13 +24,13 @@ node ~/.dsh/skills/dsh-go-plugin/kit/bin/check.mjs <解包目录> --load
 ```sh
 git init -b main
 git add .
-git commit -m "feat: dshgo-connect-madao 0.1.0"
-git tag v0.1.0
+git commit -m "feat: dshgo-connect-madao 0.1.2"
+git tag v0.1.2
 git remote add origin https://github.com/wsdzwx2001/dshgo-connect-madao.git
 git push -u origin main --tags
 ```
 
-然后把 GitHub Release 附上 `dshgo-connect-madao-0.1.0.tgz`，并在 `package.json` 补上：
+然后把 GitHub Release 附上 `dshgo-connect-madao-0.1.2.tgz`，并在 `package.json` 补上：
 
 ```json
 "repository": { "type": "git", "url": "git+https://github.com/wsdzwx2001/dshgo-connect-madao.git" },
@@ -42,13 +42,12 @@ git push -u origin main --tags
 
 ```sh
 npm login
-npm publish        # 包名 dshgo-connect-madao（npm 上当前未被占用）
+npm publish --registry=https://registry.npmjs.org/ --access public
 ```
 
 发布后安装方式：`dsh plugin --profile web add dshgo-connect-madao`。
 
-（自动化发布可选：在仓库加 `.github/workflows/publish.yml`，配置 `NPM_TOKEN` 后打 tag 自动发布。
-按当前计划只发 GitHub，所以仓库暂不带 workflow 文件，避免推送时需要额外的 `workflow` 权限。）
+（自动化发布可选：在仓库加 `.github/workflows/publish.yml`，配置 `NPM_TOKEN` 后打 tag 自动发布；当前仍为手动发布。）
 
 ## 4. 上架 dsh 插件市场
 
@@ -62,7 +61,7 @@ dsh 的插件市场读取**索引 JSON**（格式 1），索引源可以自建�
   "title": { "zh": "…", "en": "…" },
   "plugins": [{
     "name": "dshgo-connect-madao",
-    "versions": [{ "version": "0.1.0", "publishTimestamp": 1795714610, "source": { "type": "npm" } }]
+    "versions": [{ "version": "0.1.2", "publishTimestamp": 1795742836, "source": { "type": "npm" } }]
   }]
 }
 ```

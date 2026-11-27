@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { startMock } from './mock-gateway.mjs'
 
 const MOCK = 8794
+const BRIDGE_TOKEN = 'bridge-local'
 const AK = 'TESTAKTESTAKTESTAK00'
 const SK = 'testSKtestSKtestSKtestSKtestSKtestSK00'
 const PATCH = fileURLToPath(new URL('../cordis.patch.yml', import.meta.url))
@@ -69,6 +70,15 @@ const fakeCtx = {
 const { apply } = await import('../lib/index.js')
 const { bridge } = apply(fakeCtx, { port: 8796, gateway: `http://127.0.0.1:${MOCK}`, refreshMs: 250 })
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
+// 面板慢动作返回 { pending, result }；这里按宿主的行为把 result 跑完。
+const runAction = async (pendingOrPromise) => {
+  const value = await pendingOrPromise
+  if (value && typeof value === 'object' && value.pending) {
+    const controller = new AbortController()
+    return value.result(controller.signal)
+  }
+  return value
+}
 
 try {
   await wait(400)
@@ -97,6 +107,7 @@ try {
   assert.equal(empty.source, '未配置')
   assert.equal(empty.remain, '-')
   assert.ok(panel.view({}, { locale: 'zh-CN' }).children.at(-1).items.length >= 1, '模型清单要有兜底项')
+  assert.equal(edits.length, 0, '启动阶段不应写 provider（避免 HMR nested）')
 
   // 凭证表单：嵌套 / 扁平 / 再嵌套三种结构都要能读出来
   const save = (value) => credsPanel.actions.save({}, { value })
@@ -128,8 +139,9 @@ try {
   assert.equal(providers['madao-go'].baseURL, 'http://127.0.0.1:8796/v1')
   assert.equal(providers['madao-go'].models.length, 2)
   assert.equal(providers['madao-go'].models[1].reasoningEfforts.high, 'high')
+  assert.equal(providers['madao-go'].models[1].reasoningEfforts.off, 'none', 'off 要发 reasoning_effort:none')
 
-  // 模型开关：点行停用 / 启用，provider 与 patch 跟着变，至少留一个
+  // 模型开关：点行停用 / 启用，provider 跟着变，至少留一个
   const viewNow = () => panel.view({}, { locale: 'zh-CN', protocol: 1 })
   let rows = viewNow().children.at(-1).items
   assert.equal(rows.length, 2)
@@ -150,13 +162,13 @@ try {
   console.log('模型开关：停用/启用/至少留一个 都正常')
 
   // 签到：可领 → 成功 → 再签提示已签
-  let out = await panel.actions.checkin()
+  let out = await runAction(panel.actions.checkin())
   assert.match(out.toast, /签到成功 \+10/, JSON.stringify(out))
   assert.equal(bridge.state.checkin.status, 'CONFIRMED')
   assert.equal(bridge.state.checkin.claimable, false, '签完不该再显示可签到')
   emitStrip()
   assert.doesNotMatch(emitted.text, /可签到/)
-  out = await panel.actions.checkin()
+  out = await runAction(panel.actions.checkin())
   assert.match(out.toast, /今日已签到/, JSON.stringify(out))
   const after = await snapshot()
   assert.equal(after.source, '已配置')
@@ -169,7 +181,7 @@ try {
   // 关思考被网关拒绝：自动去掉 off 档并用默认思考重发
   const off = await fetch('http://127.0.0.1:8796/v1/chat/completions', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${BRIDGE_TOKEN}` },
     body: JSON.stringify({ model: 'mock-fast', stream: false, strength: 'off', messages: [{ role: 'user', content: 'hi' }] }),
   })
   assert.equal(off.status, 200, '关思考被拒不等于对话失败')
@@ -182,11 +194,13 @@ try {
 
   // 面板按钮（测试/同步会同时刷新两个面板，返回的是效果数组）
   const toastOf = (r) => (Array.isArray(r) ? r.find((x) => x.toast)?.toast : r.toast)
-  const testEff = await panel.actions.test()
+  const pendingTest = panel.actions.test()
+  assert.equal(pendingTest.pending.timeoutMs, 60_000)
+  const testEff = await runAction(pendingTest)
   assert.match(toastOf(testEff), /五项全绿/)
-  assert.deepEqual(testEff.filter((x) => x.refresh).map((x) => x.refresh).sort(), ['creds', 'madao'])
+  assert.equal(bridge.state.test.ok, true)
   assert.equal((await panel.actions.openCreds()).open, 'panel:creds')
-  assert.match(toastOf(await panel.actions.sync()), /2 个模型/)
+  assert.match(toastOf(await runAction(panel.actions.sync())), /已拉到 2 个模型/)
 
   // 额度自动刷新：不再有按钮，靠桥接定时拉
   const creditCalls = () => mock.seen.filter((r) => r.path === '/snap-manager/v1/statistics/plugin').length
@@ -202,17 +216,24 @@ try {
   const iamBefore = iamCalls
   const chat = await fetch('http://127.0.0.1:8796/v1/chat/completions', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${BRIDGE_TOKEN}` },
     body: JSON.stringify({ model: 'mock-fast', stream: false, messages: [{ role: 'user', content: 'hi' }] }),
   })
   assert.equal(chat.status, 200)
   assert.equal((await chat.json()).choices[0].message.content, '你好，mock-fast。第二段。')
   assert.ok(iamCalls > iamBefore, 'STS 过期后应重新换一次')
 
+  // 额度刷新也必须先续期，而不是拿过期 STS 失败后保留旧数字
+  bridge.state.sts.value.expiresAt = new Date(Date.now() - 1000).toISOString()
+  const iamBeforeCredit = iamCalls
+  await bridge.refreshCredit()
+  assert.ok(iamCalls > iamBeforeCredit, '额度刷新前应续期 STS')
+  assert.equal(bridge.status().credit.remain, 380)
+
   console.log('\n✅ 原生界面冒烟通过：状态条 / 面板 / 凭证表单 / 签到 / provider / STS 续期')
 } finally {
   cancelStrip?.()
-  writeFileSync(PATCH, patchBackup, 'utf8') // 同步 mock 模型清单会改 patch，跑完还原
+  writeFileSync(PATCH, patchBackup, 'utf8') // 兜底：确认测试没有意外改写静态 patch
   await bridge.close().catch(() => {})
   await mock.close()
 }

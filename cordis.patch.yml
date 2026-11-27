@@ -1,5 +1,5 @@
-# 由 dshgo-connect-madao 自动生成，请勿手工编辑。
-# 模型清单在插件启动时从码道网关拉取；上游上新或调价后重启 DSH 即同步。
+# dshgo-connect-madao 的静态兜底清单（随包发布，运行时不再改写）。
+# 启用后在「同步模型」/保存凭证时通过 configEditor 写入 profile；上游上新请点一次同步。
 - insert:
     - id: dshgo-connect-madao
       name: dshgo-connect-madao
@@ -19,7 +19,7 @@
             maxTokens: 32768
             input: [ text ]
             reasoningEfforts:
-              off: null
+              off: 'none'
               low: 'low'
               high: 'high'
               max: 'max'
@@ -65,7 +65,7 @@
             maxTokens: 32768
             input: [ text ]
             reasoningEfforts:
-              off: null
+              off: 'none'
               low: 'low'
               high: 'high'
               max: 'max'
@@ -75,7 +75,7 @@
             maxTokens: 32768
             input: [ text, image ]
             reasoningEfforts:
-              off: null
+              off: 'none'
               low: 'low'
               high: 'high'
               max: 'max'
@@ -85,7 +85,7 @@
             maxTokens: 32768
             input: [ text, image ]
             reasoningEfforts:
-              off: null
+              off: 'none'
               low: 'low'
               high: 'high'
               max: 'max'
@@ -95,7 +95,7 @@
             maxTokens: 32768
             input: [ text, image ]
             reasoningEfforts:
-              off: null
+              off: 'none'
               low: 'low'
               high: 'high'
               max: 'max'
@@ -105,7 +105,7 @@
             maxTokens: 32768
             input: [ text, image ]
             reasoningEfforts:
-              off: null
+              off: 'none'
               low: 'low'
               high: 'high'
               max: 'max'

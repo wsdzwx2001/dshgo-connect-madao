@@ -25,7 +25,7 @@ dsh plugin --profile web add dshgo-connect-madao
 dsh plugin --profile web add /path/to/dshgo-connect-madao
 
 # tarball
-dsh plugin --profile web add ./dshgo-connect-madao-0.1.0.tgz
+dsh plugin --profile web add ./dshgo-connect-madao-0.1.2.tgz
 ```
 
 装完在 App「引擎」页重启一次引擎。
@@ -43,7 +43,7 @@ dsh plugin --profile web add ./dshgo-connect-madao-0.1.0.tgz
 | 凭证 | `~/.config/dshgo-connect-madao/credentials.json`（0600） |
 | 模型开关 / 思考档位记录 | `~/.config/dshgo-connect-madao/models.json` |
 | 桥接 | `http://127.0.0.1:8766/v1` |
-| 诊断 | `GET /healthz`、`GET /v1/models` |
+| 诊断 | `GET /healthz`、`GET /v1/models`（需 `Authorization: Bearer bridge-local`；未鉴权的 `/healthz` 只返回存活信息） |
 
 环境变量 `MADAO_AK` / `MADAO_SK`（可加 `MADAO_SECURITY_TOKEN`）优先于文件。
 插件会兼容读取旧插件 `dsh-connect-madao` 的凭证路径。

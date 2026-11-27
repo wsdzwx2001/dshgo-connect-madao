@@ -8,8 +8,8 @@
 # 从 npm 安装
 dsh plugin --profile web add dshgo-connect-madao
 
-# 从 GitHub 安装（固定版本）
-dsh plugin --profile web add "git+https://github.com/wsdzwx2001/dshgo-connect-madao.git#730054f437103f4597d18a94413bd36e372fc2d3"
+# 从 GitHub 安装（固定 0.1.2）
+dsh plugin --profile web add "git+https://github.com/wsdzwx2001/dshgo-connect-madao.git#v0.1.2"
 
 # 或本地目录
 dsh plugin --profile web add /path/to/dshgo-connect-madao
@@ -31,7 +31,8 @@ dsh plugin --profile web add /path/to/dshgo-connect-madao
 - **测试连接**：主面板「测试连接」会依次检查 凭证 → 密钥协商 → 模型清单 → 额度 → 签到，并显示每一步结果。
 - **签到**：主面板「立即签到」领今日积分；已领过会提示「今日已签到」。
 - **启停模型**：点模型清单里的某一行即可启用 / 停用；停用的模型会从模型选择器里消失（至少保留一个启用）。
-- **同步模型**：网关上新模型后，点「同步模型」拉取最新清单。
+- **同步模型**：网关上新模型后，点「同步模型」拉取最新清单。启动同步完成后会自动补写/迁移一次 profile 配置（在 App 请求上下文里做，避开 HMR）；保存凭证、同步模型、切换模型时也会更新。
+- **停止生成**：点停止会同时取消发往码道的上游请求，不会继续消耗 token。
 
 ## 状态条含义
 
@@ -48,5 +49,17 @@ dsh plugin --profile web add /path/to/dshgo-connect-madao
 - **状态显示「未配置」**：还没填 AK/SK，打开「填写凭证」保存即可。
 - **状态显示「握手失败」**：凭证页底部「最近错误」会给出原因；AK/SK 错误或 IAM 限流（等约 1 分钟）最常见。
 - **对话报「未知模型」**：点一次「同步模型」，或在模型选择器里重新选模型。
-- **请求体过大**：网关单次约 10 MB，开新会话或换窗口更大的模型。
+- **请求体过大**：网关单次约 10 MB；开新会话、压缩会话或减少工具定义（换更大的窗口不会减小请求体）。
 - **模型不回复内容、只有思考**：模型把 token 预算花在思考上了，换更长的输出上限或换模型。
+
+## 本机桥的安全边界
+
+本机桥只监听 `127.0.0.1:8766`，只接受带 `Authorization: Bearer bridge-local` 的请求，并拒绝任何带浏览器 `Origin` 的请求；跨源预检也不会放行。因此普通网页无法直接调用它。
+
+需要手工看完整诊断时：
+
+```sh
+curl -s -H 'Authorization: Bearer bridge-local' http://127.0.0.1:8766/healthz
+```
+
+不带 token 的 `/healthz` 只返回 `{ ok, stage }`，不含额度、AK 或签到信息。`bridge-local` 是固定值，能读到本机 profile 配置的程序仍可调用；不要把 8766 暴露到局域网。

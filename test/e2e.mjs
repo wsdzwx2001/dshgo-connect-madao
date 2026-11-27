@@ -1,7 +1,7 @@
 // 端到端对拍：同一套模拟网关下，先跑原插件 dsh-connect-madao，再跑 dshgo-connect-madao。
 // 两边都要能签名、协商、加解密、流式返回；最后比较网关侧记录到的请求差异。
 import assert from 'node:assert/strict'
-import { createBridge } from '../lib/bridge.js'
+import { BRIDGE_TOKEN, createBridge } from '../lib/bridge.js'
 import { startMock } from './mock-gateway.mjs'
 
 const AK = 'TESTAKTESTAKTESTAK00'
@@ -63,7 +63,7 @@ function sseText(body) {
 async function chatStream(base, extra = {}) {
   const res = await fetch(`${base}/v1/chat/completions`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: 'Bearer bridge-local' },
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${BRIDGE_TOKEN}` },
     body: JSON.stringify({ ...payload, ...extra }),
   })
   const body = await res.text()
@@ -118,7 +118,7 @@ async function main() {
   // 非流式
   const nonStream = await fetch('http://127.0.0.1:8792/v1/chat/completions', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${BRIDGE_TOKEN}` },
     body: JSON.stringify({ ...payload, stream: false }),
   })
   const nonJson = await nonStream.json()
@@ -136,7 +136,7 @@ async function main() {
   assert.equal(byShown.text, '你好，mock-fast。第二段。')
   const unknown = await fetch('http://127.0.0.1:8792/v1/chat/completions', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${BRIDGE_TOKEN}` },
     body: JSON.stringify({ ...payload, model: 'nope' }),
   })
   assert.equal(unknown.status, 400)

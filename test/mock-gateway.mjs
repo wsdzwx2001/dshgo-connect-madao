@@ -22,6 +22,8 @@ function encryptSseChunk(key, keyId, plain, index) {
 export function startMock(port = 8790) {
   const sessions = new Map()
   const seen = []
+  // 测试可控：模拟网关 503、以及“所有模型都被停用”的空清单。
+  const control = { failModels: false, disableAll: false, slowChatMs: 0, chatClosed: 0 }
   // 福利活动：每次起服务都是「今日可签到」的初始状态
   const welfare = {
     items: [
@@ -65,12 +67,16 @@ export function startMock(port = 8790) {
     }
 
     if (url.pathname === '/v1/model/builtin') {
+      if (control.failModels) {
+        res.writeHead(503, { 'content-type': 'application/json' })
+        return res.end('{"error":"model list unavailable"}')
+      }
       res.writeHead(200, { 'content-type': 'application/json' })
       return res.end(
         JSON.stringify({
           builtinModels: [
-            { model_id: 'mock-fast', model_name: 'Mock-Fast', context_window: 202752, max_tokens: 65536, supports_images: true, enable: true, credit: [{ ratio_display: '0.1x' }] },
-            { model_id: 'mock-pro', model_name: 'Mock-Pro', context_window: 1048576, max_tokens: 32768, supports_images: false, enable: true, credit: [{ ratio_display: '1.0x' }] },
+            { model_id: 'mock-fast', model_name: 'Mock-Fast', context_window: 202752, max_tokens: 65536, supports_images: true, enable: !control.disableAll, credit: [{ ratio_display: '0.1x' }] },
+            { model_id: 'mock-pro', model_name: 'Mock-Pro', context_window: 1048576, max_tokens: 32768, supports_images: false, enable: !control.disableAll, credit: [{ ratio_display: '1.0x' }] },
           ],
         }),
       )
@@ -154,6 +160,19 @@ export function startMock(port = 8790) {
         return res.end(JSON.stringify({ error: { code: 'InferHub.ModelArts.81001', message: '该模型始终思考，不支持关闭思考；请使用 low、high 或 max。' } }))
       }
 
+      // 让测试有机会在响应头之前断开，验证桥接会取消上游。
+      if (control.slowChatMs > 0) {
+        await new Promise((resolve) => {
+          const timer = setTimeout(resolve, control.slowChatMs)
+          res.on('close', () => {
+            control.chatClosed++
+            clearTimeout(timer)
+            resolve()
+          })
+        })
+        if (res.destroyed) return
+      }
+
       const frames = [
         { choices: [{ index: 0, delta: { role: 'assistant', reasoning_content: '想一想。' } }] },
         { choices: [{ index: 0, delta: { content: `你好，${payload.model}。` } }] },
@@ -175,7 +194,7 @@ export function startMock(port = 8790) {
     res.end('{}')
   })
   return new Promise((resolve) =>
-    server.listen(port, '127.0.0.1', () => resolve({ server, seen, welfare, close: () => new Promise((r) => {
+    server.listen(port, '127.0.0.1', () => resolve({ server, seen, welfare, control, close: () => new Promise((r) => {
       server.close(() => r())
       server.closeAllConnections?.()
     }) })),

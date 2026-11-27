@@ -1,15 +1,15 @@
 # 社区上架清单（提交用）
 
-仓库：`dshgo-connect-madao`（本地已 init、已打 `v0.1.0`，等待远端）
-包：`dshgo-connect-madao@0.1.0`（npm 上当前未被占用）
+仓库：`dshgo-connect-madao`（已发布 GitHub `v0.1.2`）
+包：`dshgo-connect-madao@0.1.2`（npm）
 
 ## 0. 前置
 
-- [ ] GitHub 仓库创建（public）
-- [ ] `package.json` 补 `repository` / `homepage` / `bugs`
-- [ ] `git push -u origin main --tags`
-- [ ] `npm publish`（或等 CI tag 发布）
-- [ ] GitHub Release 附 `dshgo-connect-madao-0.1.0.tgz`
+- [x] GitHub 仓库创建（public）
+- [x] `package.json` 补 `repository` / `homepage` / `bugs`
+- [x] `git push origin main --tags`
+- [x] `npm publish`
+- [x] GitHub Release `v0.1.2`
 
 ## 1. GitHub 仓库设置
 
@@ -58,7 +58,7 @@ https://github.com/wsdzwx2001/dshgo-connect-madao
 ```sh
 dsh plugin --profile web add dshgo-connect-madao
 # 或在插件市场加索引后从「发现」安装
-curl -s http://127.0.0.1:8766/healthz
+curl -s -H 'Authorization: Bearer bridge-local' http://127.0.0.1:8766/healthz
 ```
 
 确认：面板出现、状态条可点、凭证页可保存、模型选择器里出现「码道 CodeArts」。
