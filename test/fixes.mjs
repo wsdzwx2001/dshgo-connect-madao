@@ -15,6 +15,7 @@ process.env.HOME = HOME
 delete process.env.MADAO_AK
 delete process.env.MADAO_SK
 delete process.env.MADAO_SECURITY_TOKEN
+delete process.env.MADAO_SECURITY_TOKEN_EXPIRES
 
 const MOCK = 8825
 const AK = 'TESTAKTESTAKTESTAK00'
@@ -26,11 +27,16 @@ const mock = await startMock(MOCK)
 const realFetch = globalThis.fetch
 let creditStatus = 200
 let iamCalls = 0
+let iamFail = 0
 globalThis.fetch = async (input, init) => {
   const url = String(input?.url ?? input)
   // 拦掉真实 IAM：返回与模拟网关同一套临时凭证
   if (url.includes('iam.cn-north-4.myhuaweicloud.com')) {
     iamCalls++
+    if (iamFail > 0) {
+      iamFail--
+      return new Response('{"error":"iam busy"}', { status: 500, headers: { 'content-type': 'application/json' } })
+    }
     return new Response(JSON.stringify({ credential: { access: AK, secret: SK, securitytoken: TOKEN, expires_at: new Date(Date.now() + 3600e3).toISOString() } }), { status: 200, headers: { 'content-type': 'application/json' } })
   }
   if (url.includes('/snap-manager/v1/statistics/plugin') && creditStatus !== 200) {
@@ -418,7 +424,109 @@ try {
     }
   }
 
-  console.log('\n✅ 回归通过：额度容错 / 状态条 / 档位规则 / 工具调用 / 413 / 签到 / 缓存 / 凭证 / max_tokens / 图片 / CRLF / 心跳')
+  // ── 19. 旧缓存里的 maxOutput 超上限：读进来就压回，别绕过 max_tokens 收敛 ──
+  {
+    const cachePath = `${HOME}/.config/dshgo-connect-madao/models-cache-legacy.json`
+    writeFileSync(
+      cachePath,
+      JSON.stringify({ at: Date.now(), models: [{ id: 'mock-fast', name: 'Mock-Fast', context: 202752, maxOutput: 65536, images: true, strengths: [], known: true }] }),
+      'utf8',
+    )
+    const b7 = createBridge({ port: 8835, gateway: `http://127.0.0.1:${MOCK}`, refreshMs: 0, modelCache: cachePath })
+    assert.equal(b7.state.modelsSource, 'cache')
+    assert.equal(b7.state.models[0].maxOutput, 32768, '旧缓存里的 65536 应压回上限')
+    console.log('· 模型缓存：旧缓存里的超大 maxOutput 被压回上限')
+  }
+
+  // ── 20. 流式续传帧没 index：桥接要补上，别让客户端拆成两个调用 ──
+  {
+    mock.control.toolNoIndex = true
+    const r6 = await realFetch('http://127.0.0.1:8820/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${BRIDGE_TOKEN}` },
+      body: JSON.stringify({
+        model: 'mock-fast',
+        messages: [{ role: 'user', content: 'hi' }],
+        tools: [{ type: 'function', function: { name: 'read', parameters: { type: 'object', properties: {} } } }],
+      }),
+    })
+    assert.equal(r6.status, 200)
+    const frames = (await r6.text())
+      .split('\n\n')
+      .map((block) => block.trim())
+      .filter((block) => block.startsWith('data:') && !block.includes('[DONE]'))
+      .map((block) => JSON.parse(block.slice(5)))
+    const calls = frames.filter((f) => f.choices?.[0]?.delta?.tool_calls).flatMap((f) => f.choices[0].delta.tool_calls)
+    assert.equal(calls.length, 2, '两帧工具调用都应转发')
+    assert.deepEqual(calls.map((c) => c.index), [0, 0], '续传帧缺 index 时应沿用上一个调用：' + JSON.stringify(calls))
+    mock.control.toolNoIndex = false
+    console.log('· 流式工具调用：缺 index 的续传帧补成同一个调用')
+  }
+
+  // ── 21. 令牌没有 expiresAt：上游 401 时换 STS 重试 ──────────────
+  {
+    process.env.MADAO_AK = AK
+    process.env.MADAO_SK = SK
+    process.env.MADAO_SECURITY_TOKEN = TOKEN
+    delete process.env.MADAO_SECURITY_TOKEN_EXPIRES
+    const b8 = createBridge({ port: 8836, gateway: `http://127.0.0.1:${MOCK}`, refreshMs: 0 })
+    bridges.push(b8)
+    await b8.listen()
+    assert.equal(await b8.connect(), true)
+    assert.equal(b8.state.tokenOnly, 0, '没有 expiresAt 时无法预判过期')
+    assert.equal((await b8.syncModels()).ok, true)
+    const iamBefore401 = iamCalls
+    mock.control.auth401Once = true
+    const r7 = await realFetch('http://127.0.0.1:8836/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${BRIDGE_TOKEN}` },
+      body: JSON.stringify({ model: 'mock-fast', stream: false, messages: [{ role: 'user', content: 'hi' }] }),
+    })
+    assert.equal(r7.status, 200, '401 后应换 STS 重试成功：' + (await r7.text()))
+    assert.equal(mock.control.auth401Once, false, '模拟网关的 401 只该发一次')
+    assert.ok(iamCalls > iamBefore401, '应重新走 IAM 换 STS')
+    assert.ok(b8.state.sts, '改走 STS 后要保留缓存以便续期')
+    delete process.env.MADAO_SECURITY_TOKEN
+    delete process.env.MADAO_AK
+    delete process.env.MADAO_SK
+    console.log('· 没有 expiresAt 的令牌：上游 401 后自动换 STS 重试')
+  }
+
+  // ── 22. 握手失败：自动退避重连，不用用户再点一次 ────────────────
+  {
+    process.env.MADAO_AK = AK
+    process.env.MADAO_SK = SK
+    delete process.env.MADAO_SECURITY_TOKEN
+    iamFail = 1
+    const b9 = createBridge({ port: 8837, gateway: `http://127.0.0.1:${MOCK}`, refreshMs: 0, reconnectBaseMs: 200 })
+    bridges.push(b9)
+    await b9.listen()
+    const first = await realFetch('http://127.0.0.1:8837/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${BRIDGE_TOKEN}` },
+      body: JSON.stringify({ model: 'mock-fast', stream: false, messages: [{ role: 'user', content: 'hi' }] }),
+    })
+    assert.equal(first.status, 503, 'IAM 失败时当次请求应是 503')
+    assert.ok(b9.status().reconnectFailures >= 1, '应记下握手失败次数')
+    assert.ok(b9.status().nextReconnectAt > 0, '应安排下一次自动重连')
+    for (let i = 0; i < 60 && !b9.state.client; i++) await wait(50)
+    assert.ok(b9.state.client, '应自动重连成功')
+    for (let i = 0; i < 40 && !b9.state.models.some((m) => m.id === 'mock-fast'); i++) await wait(50)
+    assert.equal(b9.status().reconnectFailures, 0)
+    assert.equal(b9.status().nextReconnectAt, undefined)
+    const second = await realFetch('http://127.0.0.1:8837/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${BRIDGE_TOKEN}` },
+      body: JSON.stringify({ model: 'mock-fast', stream: false, messages: [{ role: 'user', content: 'hi' }] }),
+    })
+    assert.equal(second.status, 200, '重连成功后对话应恢复')
+    await second.text()
+    delete process.env.MADAO_AK
+    delete process.env.MADAO_SK
+    console.log('· 握手失败：自动退避重连，恢复后对话可用')
+  }
+
+  console.log('\n✅ 回归通过：额度容错 / 状态条 / 档位规则 / 工具调用 / 413 / 签到 / 缓存 / 凭证 / max_tokens / 图片 / CRLF / 心跳 / 401 自救 / 自动重连')
 } finally {
   for (const dispose of disposers) {
     try {

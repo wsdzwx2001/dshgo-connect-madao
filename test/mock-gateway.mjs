@@ -29,6 +29,8 @@ export function startMock(port = 8790) {
     // 以下给回归测试用：自定义“关不掉思考”的报错、先吐内容再报错、工具续传帧不带 index、福利接口故障
     rejectNoneWith: null, errorAfterContent: false, toolNoIndex: false, failDelivery: false,
     crlfSse: false, failHeartbeat: false,
+    // 让下一次对话先回 401（模拟临时令牌已过期），验证桥接会换 STS 后重试
+    auth401Once: false,
   }
   // 福利活动：每次起服务都是「今日可签到」的初始状态
   const welfare = {
@@ -139,6 +141,12 @@ export function startMock(port = 8790) {
     }
 
     if (url.pathname === '/api/v2/chat/completions') {
+      if (control.auth401Once) {
+        control.auth401Once = false
+        record.error = 'expired security token'
+        res.writeHead(401, { 'content-type': 'application/json' })
+        return res.end('{"error":"token expired"}')
+      }
       const keyId = req.headers['x-encrypt-key-id']
       const key = sessions.get(keyId)
       if (!key) {
