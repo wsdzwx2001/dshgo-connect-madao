@@ -526,7 +526,44 @@ try {
     console.log('· 握手失败：自动退避重连，恢复后对话可用')
   }
 
-  console.log('\n✅ 回归通过：额度容错 / 状态条 / 档位规则 / 工具调用 / 413 / 签到 / 缓存 / 凭证 / max_tokens / 图片 / CRLF / 心跳 / 401 自救 / 自动重连')
+  // ── 23. 换账号：旧账号的额度 / 签到 / 心跳记录不能留在面板上 ────
+  {
+    process.env.MADAO_AK = AK
+    process.env.MADAO_SK = SK
+    process.env.MADAO_SECURITY_TOKEN = TOKEN
+    process.env.MADAO_SECURITY_TOKEN_EXPIRES = new Date(Date.now() + 3600e3).toISOString()
+    const b10 = createBridge({ port: 8838, gateway: `http://127.0.0.1:${MOCK}`, refreshMs: 0 })
+    bridges.push(b10)
+    await b10.listen()
+    assert.equal(await b10.connect(), true)
+    await b10.refreshCredit({ force: true })
+    await b10.refreshCheckin({ force: true })
+    assert.equal(b10.status().credit.remain, 380)
+    assert.ok(b10.status().checkin)
+    // 模拟「上一次连的是另一个账号」：把已加载的 AK 改掉，再走一次 connect
+    b10.state.loaded = { ...b10.state.loaded, key: { ...b10.state.loaded.key, ak: 'ANOTHERAK0000000000' } }
+    b10.state.heartbeatFailures = 3
+    b10.state.heartbeatError = 'HTTP 500'
+    assert.equal(await b10.connect(), true)
+    assert.equal(b10.status().credit, null, '换账号后旧余额必须清掉')
+    assert.equal(b10.status().creditError, null)
+    assert.equal(b10.status().checkin, null, '换账号后旧签到状态必须清掉')
+    assert.equal(b10.status().heartbeatFailures, 0, '换客户端后心跳失败应重新计数')
+    assert.equal(b10.status().heartbeatError, null)
+    // 同一账号重连不该清额度（额度刷新有 2 秒最小间隔）
+    await wait(2100)
+    await b10.refreshCredit({ force: true })
+    assert.equal(b10.status().credit.remain, 380)
+    assert.equal(await b10.connect(), true)
+    assert.equal(b10.status().credit.remain, 380, '同一账号重连不该清额度')
+    delete process.env.MADAO_SECURITY_TOKEN
+    delete process.env.MADAO_SECURITY_TOKEN_EXPIRES
+    delete process.env.MADAO_AK
+    delete process.env.MADAO_SK
+    console.log('· 换账号：旧额度 / 签到 / 心跳记录被清掉，同账号重连保留')
+  }
+
+  console.log('\n✅ 回归通过：额度容错 / 状态条 / 档位规则 / 工具调用 / 413 / 签到 / 缓存 / 凭证 / max_tokens / 图片 / CRLF / 心跳 / 401 自救 / 自动重连 / 换账号清旧状态')
 } finally {
   for (const dispose of disposers) {
     try {
